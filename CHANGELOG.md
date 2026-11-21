@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Project group collapse
+- Make project arrows and names functional keyboard-accessible expand/collapse controls; persist per-group state in browser-local storage. Preserve archiving, task records, progress and sync. Syntax and eight mocked regression checks pass; live browser acceptance pending.
+
 ## V0.4 — Completed task archive
 - Add one-click archive and searchable project-grouped archive dialog with individual and bulk restore. Store visibility preferences locally; preserve completion, hierarchy, plans, activity, timers and progress. Incomplete tasks and completed parents with incomplete descendants remain visible. Syntax and seven mocked regression checks pass; live browser acceptance pending.
 
