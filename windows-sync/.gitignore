@@ -1,0 +1,7 @@
+FocusGrowthSync.exe
+*-results.json
+summary.json
+/web/
+*.dat
+*.bak
+*.tmp
