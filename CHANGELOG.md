@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Direct plan execution
+- Remove redundant confirmation dialogs from full and selected plan execution. Keep validation, stale-storage protection, elapsed-time limits, non-overwrite behavior and result notifications. Syntax and six mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Selective plan execution
 - Add an explicit plan marquee mode; confirm only selected plan IDs into actual activity, using the existing light-gray plan-confirmed style and sync hook. Preserve original plans, unselected tasks, existing activity and normal drag/resize outside selection mode. Syntax and ten mocked checks pass; live browser acceptance pending.
 
