@@ -43,6 +43,7 @@ public sealed class Engine {
  }}
  void Cache(Snapshot s){disk.Save("cache",new{state=s.State,sha=s.Sha});Current=s;}
  public Dictionary<string,object> View(){lock(gate)return new Dictionary<string,object>{{"mode","synthetic"},{"status",Status},{"error",Error},{"lastSuccess",LastSuccess},{"pending",pending!=null},{"pendingOperationId",pending==null?null:pending["operationId"]},{"conflicts",Conflicts},{"state",Current.State},{"productionLocked",true}};}
+ public void RefreshReadOnly(bool manual){lock(gate){if((!manual||Error=="rate_limited_or_forbidden")&&DateTime.UtcNow<next)return;try{Cache(cloud.Read(Current.Sha==null?null:Current));Error=null;next=DateTime.UtcNow.AddSeconds(5);}catch(Fault ex){Error=ex.Code;failures++;next=DateTime.UtcNow.AddSeconds(ex.Code=="rate_limited_or_forbidden"?3600:Math.Min(300,Math.Pow(2,Math.Min(failures,8))*5));}catch{Error="local_io_or_transport_failure";next=DateTime.UtcNow.AddSeconds(5);}}}
  public void Sync(bool manual){lock(gate){if((!manual||Error=="rate_limited_or_forbidden")&&DateTime.UtcNow<next)return;Status="同步中";try{
   var remote=cloud.Read(Current.Sha==null?null:Current);
   if(pending!=null){string op=(string)pending["operationId"];bool done=false;
@@ -57,7 +58,7 @@ public sealed class Engine {
    }
    Schema.Require(done,"retry_exhausted");Cache(remote);disk.Clear("queue");pending=null;
   }else Cache(remote);
-  failures=0;Conflicts.Clear();Error=null;Status="已同步";LastSuccess=DateTime.UtcNow.ToString("o");next=DateTime.UtcNow.AddSeconds(30);
+  failures=0;Conflicts.Clear();Error=null;Status="已同步";LastSuccess=DateTime.UtcNow.ToString("o");next=DateTime.UtcNow.AddSeconds(5);
  }catch(Fault ex){Error=ex.Code;Status=ex.Code=="offline"?"离线":ex.Code=="sha_conflict"?"冲突":"离线";failures++;next=DateTime.UtcNow.AddSeconds(ex.Code=="rate_limited_or_forbidden"?3600:Math.Min(300,Math.Pow(2,Math.Min(failures,8))*5));}catch{Error="local_io_or_transport_failure";Status="离线";next=DateTime.UtcNow.AddSeconds(60);}}}
 }
 }
