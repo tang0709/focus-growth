@@ -1,4 +1,4 @@
-# Focus & Growth Windows 同步服务 · 0.3 虚拟测试版
+# Focus & Growth Windows 同步服务 · V0.3 虚拟测试版
 
 当前仅允许虚拟工作区。正式 `sync/state.json` 被程序路径白名单锁定，不能通过网页参数、API 或启动参数打开正式写入。真实数据首次同步需用户另行确认，届时还需完成生产迁移的独立验收。
 
@@ -44,4 +44,4 @@ Chrome 对公网到回环请求可能要求本地网络访问权限。不得修�
 
 ## 当前验收与部署
 
-以 `TEST-REPORT.md` 和机器可读报告为准。尚未通过实际浏览器完整链路的网页不发布为“已验证同步”。不会自动上传真实浏览器任务，正式首同步需确认、完整本地备份和数据差异核对。
+V0.3 已发布：正常网页 https://tang0709.github.io/focus-growth/ ，隔离虚拟同步工作区 https://tang0709.github.io/focus-growth/?syncTest=1 。53项本地测试、实际本地双向同步、Pages来源配对及线上写回均已验证。详情见本地交付的 TEST-REPORT.md 和 summary.json。普通工作区同步默认关闭，正式 sync/state.json 写入仍锁定；真实首同步需另行确认、完整备份和迁移验收。当前运行程序可继续使用，无需重新配置GitHub凭据。
