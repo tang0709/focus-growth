@@ -1,14 +1,13 @@
 # Changelog
 
-## V0.3 synthetic sync preview — local, not deployed
-- Added a Windows Credential Manager backed loopback companion with explicit native pairing and short-lived origin-bound sessions.
-- Added projects/tasks/plans field-level merge, conditional cloud writes, operation IDs, offline queue, conflict detection and local DPAPI persistence.
-- Added an isolated browser test workspace, sync status, manual sync and offline recovery while retaining the original data key and application features.
-- Production writes and automatic deletion remain locked. Local native pairing was observed; full browser data-flow acceptance and Pages deployment remain pending because browser control stopped at URL safety enforcement.
+## V0.3 — Synthetic private sync preview
+- Added a Windows Credential Manager backed loopback companion, explicit native pairing and short-lived origin-bound sessions.
+- Added field-level projects/tasks/plans merge, SHA-conditional writes, operation IDs, DPAPI-backed offline queue and explicit per-field conflict choices with backups.
+- Added isolated browser test storage, status and manual sync. Normal browser data stays local and production sync/state.json writes remain locked.
+- Validation: 53 local checks passed; actual local Chrome tests confirmed bidirectional tasks/projects/plans, proportional plan height, timer pause/resume/stop and manual completion without uploading timer fields or fabricating actual work.
+- GitHub Pages cross-origin/local-network permission validation is performed after this static test preview publishes. No browser security controls may be bypassed. Use the reviewed local UI if remote access is unsuitable.
 
 ## V0.2
 - Migrated the existing standalone HTML prototype to index.html without changing its content.
 - Preserved second-by-second task timer and separate ten-minute activity statistics.
-- GitHub Pages activation and deployed browser testing remain pending.
-- Windows global activity monitoring, live AI backend and direct chat data synchronization are not implemented.
-
+- Windows global activity monitoring and live AI backend remain future features.
