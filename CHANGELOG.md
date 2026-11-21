@@ -1,5 +1,11 @@
 # Changelog
 
+## V0.4 — Permanent trusted devices
+- Permanent, revocable Windows/browser trust using non-exportable browser signing keys, DPAPI public-key registration and single-use signed challenges. Short-lived memory-only bearer tokens automatically renew; no PAT or permanent bearer reaches browser storage.
+- Added reconnect, saved enable/pause preference, system tray, trusted-browser management, native/web revocation and opt-in Windows sign-in startup.
+- Preserved existing protocol whitelist, backups, offline queues, conflict checks and deletion protection. New explicit native confirmation grants permanent production scope; prior migration consent is not reused.
+- User requested formal activation before remaining pause/restart and old-credential revocation UI demonstrations; these remain deferred. Synthetic write tests never change production tasks.
+
 ## V0.4 — Continuous sync, separately gated production
 - Added five-second conditional polling, enable/pause, DPAPI offline queues, stable-ID field-level three-way merge, SHA conditional writes and operation deduplication. Production starts read-only and requires later explicit user approval through a separate native grant flow.
 - Preserved local history, notes, theme, quadrant, timers and ten-minute statistics; checkpoints and stale-tab guards protect incoming changes. Same-field conflicts require a choice; deletion propagation is blocked.
