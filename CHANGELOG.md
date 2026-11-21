@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Completed tasks last
+- Show unfinished tasks before completed tasks in daily lists, optional tasks and each project-tree sibling group. Preserve relative order within each status, hierarchy, schedules, archives and underlying data. Syntax and eight mocked regression checks pass; live browser acceptance pending.
+
 ## V0.4 — Project display order
 - Add compact per-project move-to-top and move-to-bottom buttons in the task tree, with boundary disabling and persistent browser-local order. Preserve independent tasks, collapse state, archiving, underlying data and sync. Syntax and nine mocked regression checks pass; live browser acceptance pending.
 
