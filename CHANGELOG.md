@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Compact project controls
+- Align move-to-top, add task and move-to-bottom in a single vertical control column; keep arrows visually subtle and preserve boundary disabling. Syntax and seven mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Completed tasks last
 - Show unfinished tasks before completed tasks in daily lists, optional tasks and each project-tree sibling group. Preserve relative order within each status, hierarchy, schedules, archives and underlying data. Syntax and eight mocked regression checks pass; live browser acceptance pending.
 
