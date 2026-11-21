@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Confirm full plan execution
+- Add explicit selected-day plan confirmation, copying ended plans into local ten-minute actual activity records in neutral light gray by default. Preserve existing activity, current timers and entered actuals; do not mark partially covered, future or running tasks newly complete. Completion and actual fields use existing sync hooks, activity remains local. Syntax and ten mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Compact project controls
 - Align move-to-top, add task and move-to-bottom in a single vertical control column; keep arrows visually subtle and preserve boundary disabling. Syntax and seven mocked checks pass; live browser acceptance pending.
 
