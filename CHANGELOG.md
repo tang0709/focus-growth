@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Flat project order controls
+- Separate add-task button from a compact two-row ordering control of matching height. Preserve existing project ordering and add-task behavior. Syntax and seven mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Project title rename
 - Double-click a project name (or press F2 when focused) to open a name-only editor with selected text and Enter-to-save. Toggle collapse in place to retain double-click target; preserve project IDs, other fields, hierarchy and sync hooks. Syntax and five mocked checks pass; live browser acceptance pending.
 
