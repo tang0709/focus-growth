@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Completed task archive
+- Add one-click archive and searchable project-grouped archive dialog with individual and bulk restore. Store visibility preferences locally; preserve completion, hierarchy, plans, activity, timers and progress. Incomplete tasks and completed parents with incomplete descendants remain visible. Syntax and seven mocked regression checks pass; live browser acceptance pending.
+
 ## V0.4 — Resizable timeline viewport
 - Add a bottom vertical resize grip with keyboard support, double-click reset and locally remembered height. Preserve the 24-hour time scale and task durations. Script syntax and five mocked height checks pass; real browser acceptance pending.
 
