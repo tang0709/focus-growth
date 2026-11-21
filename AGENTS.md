@@ -14,4 +14,6 @@
 - Keep full browser backups, PRODUCTION-* reports, detailed previews and real data strictly local and outside Git/CI/packages. Show record values only in the encrypted local preview or native dialog; shared reports contain counts/hashes only.
 - First real migration needs a second explicit consent tied to a fresh verified backup and current preview digest, local snapshot digest, remote SHA/revision. Changes invalidate approval; do not infer permission from pairing, installation or an empty remote.
 - Preserve edits made while a request is pending. Test immutable in-flight operations, durable subsequent edits, offline recovery and acknowledgement rebasing. Do not automatically reschedule or complete past plans.
+- Initial migration now has a separate snapshot-bound one-time native entry under windows-sync/first-migration. Preserve all normal production write locks. Its approval authorizes one initialization only, not continuous future writes. Never reuse consumed approval or initialize nonempty/already initialized state.
+- The normal page may explicitly read and compare protocol fields after native pairing. Readback must not apply remote data, clear tasks, alter local timing, or silently enable continuous sync. Keep all operation receipts, manifests and personal backups local.
 

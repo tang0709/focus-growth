@@ -77,3 +77,8 @@ Chrome 对公网到回环请求可能要求本地网络访问权限。不得修�
 ## 当前验收与部署
 
 V0.3 已发布：正常网页 https://tang0709.github.io/focus-growth/ ，隔离虚拟同步工作区 https://tang0709.github.io/focus-growth/?syncTest=1 。53项本地测试、实际本地双向同步、Pages来源配对及线上写回均已验证。详情见本地交付的 TEST-REPORT.md 和 summary.json。普通工作区同步默认关闭，正式 sync/state.json 写入仍锁定；真实首同步需另行确认、完整备份和迁移验收。当前运行程序可继续使用，无需重新配置GitHub凭据。
+
+## 一次性初始化与正式只读回读
+首次正式迁移使用独立工具：仓库源码位于 windows-sync/first-migration，本机交付位于 outputs/migration-service。它只在快照绑定校验通过并消耗一次性授权后初始化一次。该窗口和Cloud.Write仍拒绝正式写入，不因迁移成功自动启用持续双向写入。
+
+迁移后，在正常Pages面板重新配对，点击“读取远程并核验（不改本地）”。面板读取协议白名单状态、比较本地允许字段并显示远程revision/SHA/数量；不应用远端数据、不修改计时或历史。初始化后的提示按只读核验状态显示。

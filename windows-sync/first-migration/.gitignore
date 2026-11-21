@@ -1,0 +1,7 @@
+*.exe
+*-results.json
+APPROVAL.json
+RESULT*.json
+*.dat
+/backups/
+/approvals/
