@@ -10,4 +10,8 @@
 - Test affected functionality and update CHANGELOG.md for each release. Preserve existing features unless the user requests otherwise.
 - Sync 0.3 is synthetic-only until separate first-data consent. Do not enable production state.json writes, migrate browser data or deploy an unverified bridge. Keep the original localStorage key unchanged; syncTest=1 uses an isolated test key.
 - Never expose the PAT through browser APIs. Preserve explicit Windows pairing, exact loopback Host/Origin, short-lived memory-only sessions, durable unsent queue and field-level conflicts. Never treat empty remote collections as deletion authority.
+- V0.3.1 normal-workspace preparation is opt-in and read-only. Keep production writes denied in the native service and transport regardless of pairing or UI flags. No approval-issuing endpoint or unsafe CLI bypass is allowed in preparation releases.
+- Keep full browser backups, PRODUCTION-* reports, detailed previews and real data strictly local and outside Git/CI/packages. Show record values only in the encrypted local preview or native dialog; shared reports contain counts/hashes only.
+- First real migration needs a second explicit consent tied to a fresh verified backup and current preview digest, local snapshot digest, remote SHA/revision. Changes invalidate approval; do not infer permission from pairing, installation or an empty remote.
+- Preserve edits made while a request is pending. Test immutable in-flight operations, durable subsequent edits, offline recovery and acknowledgement rebasing. Do not automatically reschedule or complete past plans.
 

@@ -18,5 +18,14 @@ const basicFetch=s.fetch;s.fetch=async(url,opts)=>{
  return {ok:true,json:async()=>({status:serverPending?'冲突':'已同步',state:structuredClone(remote),pending:!!serverPending,pendingOperationId:serverPending,conflicts:serverPending?['tasks/synthetic/name']:[],lastSuccess:'synthetic'})};
 };
 await test('explicit_field_choice_resolution_preserves_local_fields',async()=>{remote.tasks[0].name='Remote conflict';remote.revision++;run(`db.tasks[0].name='Local conflict'`);conflictMode=true;s.fgSyncSeed();await s.fgSyncManual();assert(node('fg-sync-status').textContent.includes('冲突'));s.fgSyncConflictPanel();node('fg-conflict-0').value='local';await s.fgSyncCommitResolution();assert.equal(remote.tasks.find(r=>r.id==='synthetic').name,'Local conflict');assert.equal(run('db.tasks.find(r=>r.id==="synthetic").note'),'LOCAL_ONLY');assert([...storage.keys()].some(k=>k.startsWith('fg-sync-test-conflict-backup-')));});
+await test('edits_during_inflight_response_are_preserved_and_promoted',async()=>{
+ let release,started;const barrier=new Promise(r=>release=r),entered=new Promise(r=>started=r);const normal=s.fetch;let first=true,sent;
+ s.fetch=async(url,opts)=>{if(first&&url.endsWith('/v1/changes')){first=false;sent=JSON.parse(opts.body);started();await barrier;remote=structuredClone(sent.desired);remote.revision=++writes;remote.operationIds=[sent.operationId];return {ok:true,json:async()=>({status:'已同步',state:structuredClone(remote),pending:false,lastSuccess:'synthetic'})};}return normal(url,opts);};
+ s.fgSyncSeed();const running=s.fgSyncManual();await entered;
+ run(`db.tasks.find(t=>t.id==='synthetic').name='Latest edit during inflight response'`);s.fgSyncSeed();
+ const staged=JSON.parse(storage.get('fg-sync-test-meta-v1'));assert.equal(staged.pending.operationId,sent.operationId);assert(staged.next);assert.equal(staged.next.desired.tasks.find(t=>t.id==='synthetic').name,'Latest edit during inflight response');
+ release();await running;assert.equal(run(`db.tasks.find(t=>t.id==='synthetic').name`),'Latest edit during inflight response');assert(JSON.parse(storage.get('fg-sync-test-meta-v1')).pending);
+ await s.fgSyncManual();assert.equal(remote.tasks.find(t=>t.id==='synthetic').name,'Latest edit during inflight response');assert.equal(remote.tasks.length,run('db.tasks.length'));s.fetch=normal;
+});
 fs.writeFileSync(path.join(root,'frontend-async-results.json'),JSON.stringify({passed:results.filter(r=>r.pass).length,total:results.length,tests:results},null,2));console.log(JSON.stringify(results));if(results.some(r=>!r.pass))process.exitCode=1;
 })();

@@ -14,3 +14,12 @@
 8. Pages供应链：公开网页可被更新，同一GitHub账号的Pages项目共享Origin，因此只信任经本机审阅并明确配对的页面。本轮仅合成数据，正式操作优先本地受信UI。
 
 不声称覆盖：同一Windows用户下恶意进程、浏览器扩展入侵、操作系统被控制、用户误配对恶意页面、GitHub PAT未来过期及全授权范围证明。未修改浏览器网络安全机制。
+
+## V0.3.1 preparation boundary
+- Normal Pages scripts are remote code and can access the app's browser storage. Pair only the reviewed deployment, confirm its exact origin in Windows, and keep the 15-minute session memory-only. Pairing is not approval to upload.
+- The preparation listener uses a separate loopback port 18418 with no Engine instance. Paired write routes return 403 before reading or writing remote data; Cloud separately denies canonical writes and deletes. There is no approval issuance endpoint or generic unlock switch.
+- Only an explicit backup/preview request sends the full existing browser snapshot to the authenticated loopback service. It is DPAPI encrypted, restored in memory and validated before difference calculation. GitHub receives GET requests only. Browser responses contain redacted counts/digests, never task values, full storage or PAT.
+- Detailed per-field values appear only in a native local dialog and DPAPI-encrypted files outside the repository. Local PRODUCTION-* report files and all backups must be excluded from Git, CI and distribution packages even when redacted.
+- Profile source IDs bind requests within a service session; they identify an opted-in browser storage, not a cryptographic proof of an OS Chrome profile. Operators must start from the user's existing normal tab. Missing, demo, empty or mismatched sources cannot authorize migration.
+- New local changes invalidate the UI preview. Any future approval must be single-use and bind fresh backup, preview digest, local projection and current remote SHA/revision; this release cannot issue or consume such a production grant.
+- Offline or unsupported remote data blocks readiness. The app remains local; no initialization, rescheduling, completion or deletion is inferred. DPAPI protects data at rest for the current Windows user and is not a defense against malicious processes running as that user.

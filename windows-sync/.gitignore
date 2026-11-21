@@ -5,3 +5,8 @@ summary.json
 *.dat
 *.bak
 *.tmp
+FocusGrowthPrepare.exe
+PRODUCTION-*
+/local-private/
+preparation-results.json
+preparation-frontend-results.json
