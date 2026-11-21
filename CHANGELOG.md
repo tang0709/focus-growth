@@ -5,7 +5,7 @@
 - Added field-level projects/tasks/plans merge, SHA-conditional writes, operation IDs, DPAPI-backed offline queue and explicit per-field conflict choices with backups.
 - Added isolated browser test storage, status and manual sync. Normal browser data stays local and production sync/state.json writes remain locked.
 - Validation: 53 local checks passed; actual local Chrome tests confirmed bidirectional tasks/projects/plans, proportional plan height, timer pause/resume/stop and manual completion without uploading timer fields or fabricating actual work.
-- GitHub Pages cross-origin/local-network permission validation is performed after this static test preview publishes. No browser security controls may be bypassed. Use the reviewed local UI if remote access is unsuitable.
+- GitHub Pages deployment succeeded. Actual Chrome 158.0.8127.37 testing confirmed explicit Pages-origin pairing, receipt of private synthetic data, and a Pages project edit written back to the isolated private fixture. No browser security controls were disabled; keep the reviewed local UI as a fallback.
 
 ## V0.2
 - Migrated the existing standalone HTML prototype to index.html without changing its content.
