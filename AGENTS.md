@@ -8,3 +8,6 @@
 - Global Windows monitoring, system tray, AI API backend, AI planning and direct chat-to-data sync are future features; distinguish working features from placeholders.
 - Do not commit actual personal tasks, work records, API keys, backups, or private databases. Use synthetic demo data only. Keep secrets in a local backend, never public JavaScript.
 - Test affected functionality and update CHANGELOG.md for each release. Preserve existing features unless the user requests otherwise.
+- Sync 0.3 is synthetic-only until separate first-data consent. Do not enable production state.json writes, migrate browser data or deploy an unverified bridge. Keep the original localStorage key unchanged; syncTest=1 uses an isolated test key.
+- Never expose the PAT through browser APIs. Preserve explicit Windows pairing, exact loopback Host/Origin, short-lived memory-only sessions, durable unsent queue and field-level conflicts. Never treat empty remote collections as deletion authority.
+
