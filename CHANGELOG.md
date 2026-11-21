@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Project display order
+- Add compact per-project move-to-top and move-to-bottom buttons in the task tree, with boundary disabling and persistent browser-local order. Preserve independent tasks, collapse state, archiving, underlying data and sync. Syntax and nine mocked regression checks pass; live browser acceptance pending.
+
 ## V0.4 — Project group collapse
 - Make project arrows and names functional keyboard-accessible expand/collapse controls; persist per-group state in browser-local storage. Preserve archiving, task records, progress and sync. Syntax and eight mocked regression checks pass; live browser acceptance pending.
 
