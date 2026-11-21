@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Actual timeline marquee selection
+- Drag a mouse selection rectangle in the actual timeline to select entire intersected activity blocks and assign a shared state. Preserve individual click editing and all other task and activity fields; reject stale selections. State records remain browser-local. Syntax and 11 mocked regression checks pass; live browser acceptance pending.
+
 ## V0.4 — Nested task folding and alignment
 - Replace static child-task arrows with independently collapsible, persistent branches. Use fixed-width marker and checkbox columns with uniform indentation. Preserve task history, scheduling, completion, archiving and sync. Syntax and eight mocked checks pass; live browser acceptance pending.
 
