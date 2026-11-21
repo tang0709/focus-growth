@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Selective plan execution
+- Add an explicit plan marquee mode; confirm only selected plan IDs into actual activity, using the existing light-gray plan-confirmed style and sync hook. Preserve original plans, unselected tasks, existing activity and normal drag/resize outside selection mode. Syntax and ten mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Independent statistics periods
 - Add day, week, month and year analysis with independent date controls, previous/next period navigation, locally remembered selection and in-page drilldown. Scope activity metrics, trends, quadrant and task category totals to the selected period; distinguish all-history estimates. Preserve original workbench date and task data. Syntax and 14 mocked regression checks pass, including leap-year and cross-year ranges; live browser acceptance pending.
 
