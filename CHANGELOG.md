@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Independent statistics periods
+- Add day, week, month and year analysis with independent date controls, previous/next period navigation, locally remembered selection and in-page drilldown. Scope activity metrics, trends, quadrant and task category totals to the selected period; distinguish all-history estimates. Preserve original workbench date and task data. Syntax and 14 mocked regression checks pass, including leap-year and cross-year ranges; live browser acceptance pending.
+
 ## V0.4 — Independent work-session recording
 - Start work immediately without selecting a task. Show a live dashed gray preview and persist unassigned actual activity in existing ten-minute slots, including cross-midnight sessions and reload recovery. Allow later assignment via existing actual-block editor. Preserve occupied slots, task timers and local privacy. Syntax and 11 mocked checks pass; live browser acceptance pending.
 
