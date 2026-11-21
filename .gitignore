@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+/backups/
+/data/
+/exports/
+/private/
+/node_modules/
+__pycache__/
+*.log
