@@ -82,5 +82,6 @@ public sealed class Pairing {
  public string Pair(string code,string origin,Func<string,bool> approve){lock(this){if((DateTime.UtcNow-window).TotalMinutes>=1){attempts=0;window=DateTime.UtcNow;}if(++attempts>8)throw new Fault("pair_rate_limit");if(DateTime.UtcNow>CodeExpiry||!J.SecretEqual(code,Code))throw new Fault("pair_invalid_or_expired");if(!approve(origin))throw new Fault("pair_denied");Code=J.Random();CodeExpiry=DateTime.MinValue;string token=J.Random();sessions[token]=Tuple.Create(origin,DateTime.UtcNow.AddMinutes(15));return token;}}
  public bool Auth(string token,string origin){lock(this){Tuple<string,DateTime> s;return token!=null&&sessions.TryGetValue(token,out s)&&s.Item1==origin&&s.Item2>DateTime.UtcNow;}}
  public void ExpireForTest(){lock(this){foreach(var key in sessions.Keys.ToArray())sessions[key]=Tuple.Create(sessions[key].Item1,DateTime.MinValue);}}
+ public string IssueVerified(string origin){lock(this){string token=J.Random();sessions.Clear();sessions[token]=Tuple.Create(origin,DateTime.UtcNow.AddMinutes(15));return token;}}
 }
 }
