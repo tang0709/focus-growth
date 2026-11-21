@@ -8,9 +8,14 @@ namespace FocusGrowth {
 static class Program {
  [STAThread]static void Main(string[] args){
   string root=AppDomain.CurrentDomain.BaseDirectory;
+  if(args.Length==0||(args.Length==1&&args[0]=="--preparation")){PreparationProgram.Run(root);return;}
+  if(args.Length==1&&args[0]=="--capture-metadata"){PreparationProgram.CaptureMetadata(root);return;}
+  if(args.Length==2&&args[0]=="--backup-export"){PreparationProgram.BackupExport(root,args[1]);return;}
+  if(args.Length==1&&args[0]=="--v031-tests"){PreparationTests.Run(root);return;}
   if(args.Length>0&&args[0]=="--selftest"){Tests.Run(root);return;}
   if(args.Length>0&&args[0]=="--cloud-test"){Tests.CloudTest(root);return;}
-  if(args.Length>0){MessageBox.Show("Production synchronization is locked. Synthetic mode only.");return;}
+  if(args.Length==1&&args[0]=="--synthetic")args=new string[0];
+  if(args.Length>0){MessageBox.Show("Production writes require separate consent. No bypass flag is available.");return;}
   Application.EnableVisualStyles();
   try{string folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FocusGrowthSync","synthetic-v1");var disk=new Disk(folder);var config=disk.Load("workspace");if(config==null){config=new Dictionary<string,object>{{"id","workspace-"+Guid.NewGuid().ToString("N")}};disk.Save("workspace",config);}string path="sync/tests/"+(string)config["id"]+".json";
   using(var mutex=new Mutex(false,"Local\\FocusGrowthSync-Synthetic-18417")){if(!mutex.WaitOne(0)){MessageBox.Show("Focus Growth companion is already running.");return;}

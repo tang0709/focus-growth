@@ -71,9 +71,9 @@
   meta.base=copy(remote);persist();return true;
  }
  function queue(){
-  if(meta.pending)return;
+  if(meta.pending){const latest=project();if(Object.keys(fields).every(k=>stable(latest[k])===stable(meta.pending.desired[k])))meta.next=null;else meta.next={base:copy(meta.pending.desired),desired:latest,operationId:meta.next?.operationId||crypto.randomUUID()};persist();return;}
   const desired=project();if(Object.keys(fields).every(k=>stable(desired[k])===stable(meta.base[k])))return;
-  meta.pending={base:copy(meta.base),desired,operationId:crypto.randomUUID()};persist();
+  meta.pending={base:copy(meta.base),desired,operationId:meta.next?.operationId||crypto.randomUUID()};meta.next=null;persist();
  }
  async function sync(manual=false){
   if(!TEST||!enabled||!session||busy||(!manual&&Date.now()<nextAt))return;
@@ -84,7 +84,7 @@
    if(meta.pending){if(meta.resolutionPrevious){response=await request('/v1/resolve',{...meta.pending,previousOperationId:meta.resolutionPrevious});delete meta.resolutionPrevious;persist();}else response=await request('/v1/changes',meta.pending);}
    latestRemote=copy(response.state);serverPendingOperation=response.pendingOperationId||null;
    status=response.status;last=response.lastSuccess||last;error=response.error||'';conflicts=response.conflicts||[];
-   if(status==='已同步'&&!response.pending){if(meta.pending)meta.base=copy(meta.pending.desired);meta.pending=null;persist();if(applyIncoming(response.state)){failures=0;nextAt=Date.now()+30000;}}
+   if(status==='已同步'&&!response.pending){if(meta.pending)meta.base=copy(meta.pending.desired);meta.pending=null;persist();const applied=applyIncoming(response.state);queue();if(applied){failures=0;nextAt=Date.now()+(meta.pending?1500:30000);if(meta.pending){clearTimeout(timer);timer=setTimeout(()=>sync(),1500);}}}
    else nextAt=Date.now()+Math.min(300000,5000*2**Math.min(++failures,6));
   }catch(e){if(status!=='等待授权')status='离线';error=e.message==='Failed to fetch'?'无法连接本地服务。检查程序、配对及浏览器本地网络权限；也可使用本地受信网页。':e.message;nextAt=Date.now()+Math.min(300000,5000*2**Math.min(++failures,6));}
   finally{busy=false;show();}
