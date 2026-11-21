@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Resizable timeline viewport
+- Add a bottom vertical resize grip with keyboard support, double-click reset and locally remembered height. Preserve the 24-hour time scale and task durations. Script syntax and five mocked height checks pass; real browser acceptance pending.
+
 ## V0.4 — Neutral plan timeline colors
 - Give planned blocks neutral gray fill, border and text independently of the four actual-activity state colors. No task data or sync changes.
 
