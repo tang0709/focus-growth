@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Neutral plan timeline colors
+- Give planned blocks neutral gray fill, border and text independently of the four actual-activity state colors. No task data or sync changes.
+
 ## V0.4 — Optional daily maintenance and local retrospective entry
 - Support daily optional task templates using existing category and stable-ID fields; create a dated instance only when requested, exclude optional work from core targets and project completion metrics.
 - Add reviewed, locally stored activity backfill from completed project plans over a selected date range. Preserve existing activity slots, exclude future slots, require manual confirmation, and retain protocol privacy boundaries.
