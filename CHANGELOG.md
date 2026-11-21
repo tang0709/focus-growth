@@ -1,5 +1,10 @@
 # Changelog
 
+## V0.4 — Date navigation fix
+- Clarify the today navigation button: highlight Today only for the actual local date; otherwise show Return to Today.
+- Match selected-date task and overview labels and week/month headings to the viewed period, preserving actual-today activity counters.
+- Validated script syntax and four mocked date-render cases covering today, yesterday, tomorrow and a previous month. Browser acceptance pending.
+
 ## V0.4 — Permanent trusted devices
 - Permanent, revocable Windows/browser trust using non-exportable browser signing keys, DPAPI public-key registration and single-use signed challenges. Short-lived memory-only bearer tokens automatically renew; no PAT or permanent bearer reaches browser storage.
 - Added reconnect, saved enable/pause preference, system tray, trusted-browser management, native/web revocation and opt-in Windows sign-in startup.
