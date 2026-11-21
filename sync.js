@@ -78,6 +78,7 @@
    if(running&&result.state.tasks.find(t=>t.id===running)?.done){conflicts=['tasks/'+running+'/active_timer_preservation'];status='冲突';error='远端完成涉及运行计时，请先暂停计时并复核；本地计时完整保留。';return false;}
    browserBackup();await checkpoint(raw);assertFresh();if(raw!==JSON.stringify(db))continue;
    const next=copy(db);for(const col of Object.keys(fields)){const old=new Map(db[col].map(row=>[row.id,row]));next[col]=result.state[col].map(row=>({...old.get(row.id),...row}));}
+   if(typeof reconcileIncomingCompletions==='function')reconcileIncomingCompletions(db,next);
    if(validate(next))throw Error('incoming_validation_failed');
    if(next.taskTimer&&!next.tasks.some(t=>t.id===next.taskTimer.taskId))throw Error('active_timer_preservation');
    applying=true;try{db=next;render();}finally{applying=false;}meta.base=copy(remote);persist();return true;
