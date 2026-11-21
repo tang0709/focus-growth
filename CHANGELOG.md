@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Completion-based timeline entries
+- On explicit task completion, infer an interval from the preceding same-day actual task or task timer, update a sole plan or add one, and record minute-precision local actuals. Preserve other tasks and occupied activity; allow nonoverlapping partial slots, update statistics and editing ranges, and reconcile synchronized completions. Syntax and 14 focused mocked checks passed; live browser acceptance pending. Activity remains local.
+
 ## V0.4 — Direct plan execution
 - Remove redundant confirmation dialogs from full and selected plan execution. Keep validation, stale-storage protection, elapsed-time limits, non-overwrite behavior and result notifications. Syntax and six mocked checks pass; live browser acceptance pending.
 
