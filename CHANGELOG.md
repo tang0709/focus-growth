@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Nested task folding and alignment
+- Replace static child-task arrows with independently collapsible, persistent branches. Use fixed-width marker and checkbox columns with uniform indentation. Preserve task history, scheduling, completion, archiving and sync. Syntax and eight mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Flat project order controls
 - Separate add-task button from a compact two-row ordering control of matching height. Preserve existing project ordering and add-task behavior. Syntax and seven mocked checks pass; live browser acceptance pending.
 
