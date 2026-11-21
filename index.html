@@ -27,7 +27,7 @@ function dayTasks(){let ids=new Set(db.plans.filter(p=>p.date===day).map(p=>p.ta
 function optionalInstanceId(t,d){return 'daily-'+t.id+'-'+d}
 function createDailyOptional(id){let t=task(id);if(!t||!isOptionalTemplate(t)||t.done||day<today())return;let key=optionalInstanceId(t,day);if(key.length>120)return toast('模板 ID 过长');if(task(key))return toast('该日附加任务已存在');db.tasks.push({id:key,projectId:t.projectId,parentId:null,name:t.name,estimate:t.estimate,date:day,goal:'normal',category:'每日可选任务',priority:t.priority,done:false,actual:null});render();toast('已添加可选附加任务；不影响核心目标')}
 function dailyOptionalHTML(){let ts=db.tasks.filter(t=>isOptionalTemplate(t)&&!t.done);let selected=completedTasksLast(db.tasks.filter(t=>t.category==='每日可选任务'&&t.date===day));if(!ts.length&&!selected.length)return '';return `<div class="sub"><h3>每日可选附加任务</h3><p class="muted">有余力再做，不计入核心目标或长期项目完成率。</p>${ts.map(t=>{let instance=task(optionalInstanceId(t,day));return instance?'':`<div class="goalrow"><span>${esc(t.name)} · ${t.estimate}m</span>${day>=today()? `<button class="small" onclick="createDailyOptional('${safeId(t.id)}')">加入当日</button>`:'<small>未安排</small>'}</div>`}).join('')}${selected.map(t=>taskHTML(t,0)).join('')}</div>`}
-function getColor(s){return `var(--${zones[s]&&s!=='unknown'?s:'activate'})`}function applyTheme(){Object.entries(db.theme||{}).forEach(([k,v])=>{if(/^#[\da-f]{6}$/i.test(v)&&['bg','accent','focus','noise','activate','repair'].includes(k))document.documentElement.style.setProperty('--'+k,v)})}function render(){normalizeTimer();recoverRecentCompletionPlan(db);applyTheme();renderMetrics();renderLeft();renderRight();renderCenter();renderFooter();renderTaskTimer();renderPage();$('demoBadge').textContent=db.demo?'示例数据':'正式使用';save()}function renderMetrics(){let ps=db.projects,leaf=db.tasks.filter(t=>!isOptionalTask(t)&&!db.tasks.some(c=>c.parentId===t.id)),done=leaf.filter(t=>t.done).length,td=dayTasks(),n=td.filter(t=>t.done).length,risk=ps.filter(p=>p.deadline&&p.deadline<=addDay(today(),3)&&progress(p).k<progress(p).n);let planned=db.plans.filter(p=>p.date===day&&!isOptionalTask(task(p.taskId)||{})).reduce((s,p)=>s+p.duration,0);const items=[['长期任务追踪',`${ps.length} 个项目`,`${ps.filter(p=>progress(p).n&&progress(p).n===progress(p).k).length} 已完成`,ps.length?60:0],[day===today()?'今日任务追踪':'当日任务追踪',`${n} / ${td.length}`,`${td.filter(t=>!t.done).length} 项待完成`,td.length?n/td.length*100:0],[day===today()?'今日目标':'当日目标',fmt(planned),`保底 ${fmt(db.goals.low)} · 进度 ${fmt(db.goals.normal)}`,db.goals.normal?Math.min(100,planned/db.goals.normal*100):0],['今日工作时长',fmt(dayMins(today())),'10分钟活动块',Math.min(100,dayMins(today())/Math.max(db.goals.normal,1)*100)],['项目进度',`${leaf.length?Math.round(done/leaf.length*100):0}%`,`${done} / ${leaf.length} 项末级任务`,leaf.length?done/leaf.length*100:0],['近期截止提醒',`${risk.length} 个项目`,'仅按截止日期筛查',risk.length?100:0]];$('metrics').innerHTML=items.map((m,i)=>`<div class="metric" ${i===5&&risk.length?'style="background:#fff7f7"':''}><small>${esc(m[0])}</small><strong>${esc(m[1])}</strong><small>${esc(m[2])}</small><div class="track"><i style="width:${m[3]}%"></i></div></div>`).join('')}
+function getColor(s){return `var(--${zones[s]&&s!=='unknown'?s:'activate'})`}function applyTheme(){Object.entries(db.theme||{}).forEach(([k,v])=>{if(/^#[\da-f]{6}$/i.test(v)&&['bg','accent','focus','noise','activate','repair'].includes(k))document.documentElement.style.setProperty('--'+k,v)})}function render(){normalizeTimer();recoverRecentCompletionPlan(db);applyTheme();renderMetrics();renderLeft();renderRight();renderCenter();renderFooter();renderTaskTimer();renderPage();$('demoBadge').textContent=db.demo?'示例数据':'正式使用';save()}function renderMetrics(){let ps=db.projects,leaf=db.tasks.filter(t=>!isOptionalTask(t)&&!db.tasks.some(c=>c.parentId===t.id)),done=leaf.filter(t=>t.done).length,td=dayTasks(),n=td.filter(t=>t.done).length,risk=ps.filter(p=>p.deadline&&p.deadline<=addDay(today(),3)&&progress(p).k<progress(p).n);let planned=db.plans.filter(p=>p.date===day&&!isOptionalTask(task(p.taskId)||{})).reduce((s,p)=>s+p.duration,0);const items=[['长期任务追踪',`${ps.length} 个项目`,`${ps.filter(p=>progress(p).n&&progress(p).n===progress(p).k).length} 已完成`,ps.length?60:0],[day===today()?'今日任务追踪':'当日任务追踪',`${n} / ${td.length}`,`${td.filter(t=>!t.done).length} 项待完成`,td.length?n/td.length*100:0],[day===today()?'今日目标':'当日目标',fmt(planned),`保底 ${fmt(db.goals.low)} · 进度 ${fmt(db.goals.normal)}`,db.goals.normal?Math.min(100,planned/db.goals.normal*100):0],['今日工作时长',fmt(dayMins(today())),'实际活动记录',Math.min(100,dayMins(today())/Math.max(db.goals.normal,1)*100)],['项目进度',`${leaf.length?Math.round(done/leaf.length*100):0}%`,`${done} / ${leaf.length} 项末级任务`,leaf.length?done/leaf.length*100:0],['近期截止提醒',`${risk.length} 个项目`,'仅按截止日期筛查',risk.length?100:0]];$('metrics').innerHTML=items.map((m,i)=>`<div class="metric" ${i===5&&risk.length?'style="background:#fff7f7"':''}><small>${esc(m[0])}</small><strong>${esc(m[1])}</strong><small>${esc(m[2])}</small><div class="track"><i style="width:${m[3]}%"></i></div></div>`).join('')}
 function renderLeft(){let s=db.state,z=zones[s]||zones.unknown;$('main')?.classList.toggle('narrow',collapsed);$('work').classList.toggle('narrow',collapsed);$('left').classList.toggle('collapsed',collapsed);$('collapse').textContent=collapsed?'展开':'收起';$('leftbody').innerHTML=`<div class="quadrants">${['focus','noise','activate','repair'].map(k=>`<button class="q ${k} ${s===k?'selected':''}" onclick="chooseState('${k}')"><b>${zones[k].icon} ${zones[k].name}</b><small>${zones[k].desc}</small></button>`).join('')}</div>${s?`<div class="statebar ${s}"><b>当前状态：${z.name}</b><div class="muted">${z.tip}</div></div><h3>专属组件</h3>${(db.widgets[s]||[]).map((w,i)=>`<button class="widget" onclick="openWidget(${i})"><span class="wi">${['✧','◇','▤','▷'][i%4]}</span><span><b>${esc(w[0])}</b><small>${esc(w[1])}</small></span><span>›</span></button>`).join('')}<button class="primary" style="width:100%;margin-top:8px" onclick="startWork()">${db.workSession?'工作计时中':'进入工作'}</button>`:'<div class="empty">选择当前状态，显示对应的启动组件。</div>'}<div class="sectiongap"><label class="muted"><input type="checkbox" ${db.pin?'checked':''} onchange="db.pin=this.checked;save()"> 固定启动栏</label>　<button class="small" onclick="editWidgets()">组件设置</button></div>`}
 function chooseState(s){db.state=s;db.history.push({type:'state',state:s,time:new Date().toISOString()});render();toast('当前状态：'+zones[s].name)}function toggleLeft(){collapsed=!collapsed;renderLeft()}function validWorkSession(w){return !!w&&Number.isFinite(w.startedAt)&&w.startedAt>0&&Number.isFinite(w.cursorMs)&&w.cursorMs>=w.startedAt}
 function workSessionDraft(base,end,finish=false){
@@ -250,6 +250,7 @@ function applyTaskCompletionTimeline(base,id,clock,explicitPlan=null){
  if(!fillCompletionActivity(base,id,date,start,end))return false;
  if(!explicitPlan){if(plan)Object.assign(plan,{date,start,duration:end-start});else base.plans.push({id:'auto-completion-'+id,taskId:id,date,start,duration:end-start});t.date=date}
  if(t.actual==null)t.actual=sumActivity(base.activity.filter(a=>a.taskId===id));
+ if(t.completedAt&&!base.history.some(h=>h.type==='completion-timeline-recovered'&&h.taskId===id&&h.completedAt===t.completedAt))base.history.push({type:'completion-timeline-recovered',taskId:id,completedAt:t.completedAt,time:new Date().toISOString()});
  return true
 }
 function reconcileIncomingCompletions(before,next){
@@ -270,10 +271,10 @@ function recoverRecentCompletionPlan(base){
   const p=base.plans.find(p=>p.taskId===t.id&&p.date===date&&p.start+p.duration===end&&p.duration===t.actual);
   if(!p||base.history.some(h=>h.type==='completion-timeline-recovered'&&h.taskId===t.id&&h.completedAt===t.completedAt))continue;
   if(!base.activity.some(a=>a.taskId&&a.taskId!==t.id&&a.date===date&&activityEnd(a)===p.start)||base.activity.some(a=>a.taskId===t.id&&a.date===date))continue;
-  if(applyTaskCompletionTimeline(base,t.id,clock,p))base.history.push({type:'completion-timeline-recovered',taskId:t.id,completedAt:t.completedAt,time:new Date().toISOString()})
+  applyTaskCompletionTimeline(base,t.id,clock,p)
  }
 }
-function completeTask(id,done){let t=task(id);if(!t)return;const newlyDone=done&&!t.done,clock=new Date();if(!done&&archivedTaskIds.has(id)){let next=new Set(archivedTaskIds);next.delete(id);persistArchive(next)}t.done=done;if(done){if(newlyDone)t.completedAt=clock.toISOString();if(newlyDone)applyTaskCompletionTimeline(db,id,clock);if(db.taskTimer?.taskId===id)settleTaskTimer();if(t.actual==null&&actualFor(id)>0)t.actual=actualFor(id);if(db.currentTask===id)db.currentTask=null}else{delete t.completedAt}render()}
+function completeTask(id,done){let t=task(id);if(!t)return;try{window.FocusGrowthStorageGuard?.before()}catch{return toast('页面数据已变化，请刷新重试')}const newlyDone=done&&!t.done,clock=new Date();if(!done&&archivedTaskIds.has(id)){let next=new Set(archivedTaskIds);next.delete(id);persistArchive(next)}t.done=done;if(done){if(newlyDone)t.completedAt=clock.toISOString();if(newlyDone)applyTaskCompletionTimeline(db,id,clock);if(db.taskTimer?.taskId===id)settleTaskTimer();if(t.actual==null&&actualFor(id)>0)t.actual=actualFor(id);if(db.currentTask===id)db.currentTask=null}else{delete t.completedAt}render()}
 const AXIS_HEIGHT_KEY=STORE+'-axis-height', AXIS_MIN=240, AXIS_MAX=1185;
 function clampAxisHeight(n){return Math.max(AXIS_MIN,Math.min(AXIS_MAX,Math.round(n)))}
 let axisHeight=null;
@@ -331,6 +332,11 @@ function beginPlanSelection(e,lane){
 }
 function planBlocks(a){return a.map(p=>{let t=task(p.taskId);if(!t)return '';return `<div class="block" style="top:${p.start*SCALE}px;height:${p.duration*SCALE}px" title="${esc(t.name)} ${hm(p.start)}–${hm(p.start+p.duration)}" data-plan-id="${safeId(p.id)}" draggable="${!planSelectMode}" ondragstart="if(planSelectMode)event.preventDefault();else dragPlan(event,'${safeId(p.id)}')" onclick="if(!planSelectMode)editPlan('${safeId(p.id)}')"><div class="label">${esc(t.name)}</div>${p.duration>=30?`<div class="time">${hm(p.start)}–${hm(p.start+p.duration)} · ${p.duration}m</div>`:''}${planSelectMode?'':`<div class="resize" onpointerdown="resizePlan(event,'${safeId(p.id)}')"></div>`}</div>`}).join('')}
 
+function activityCoversPlan(base,p){
+ let cursor=p.start,end=p.start+p.duration;
+ const records=base.activity.filter(a=>a.date===p.date&&a.taskId===p.taskId&&activityEnd(a)>cursor&&activityStart(a)<end).sort((a,b)=>activityStart(a)-activityStart(b));
+ for(const a of records){if(activityStart(a)>cursor)return false;cursor=Math.max(cursor,activityEnd(a));if(cursor>=end)return true}return false
+}
 function planExecutionDraft(base,date,clock,planIds=null){
  const next=clone(base),tasks=new Map(next.tasks.map(t=>[t.id,t])),occupied=new Map(next.activity.map(a=>[a.date+':'+a.slot,a])),chosen=new Map();
  const currentDate=dateKey(clock),elapsed=clock.getHours()*60+clock.getMinutes();
@@ -344,7 +350,7 @@ function planExecutionDraft(base,date,clock,planIds=null){
  }}
  let added=0,conflicts=0,existing=0;
  for(let [key,a] of chosen){
-  const prior=occupied.get(key);if(prior){if(prior.taskId===a.taskId)existing++;else conflicts++;continue}
+  const prior=occupied.get(key);if(prior){if(prior.taskId===a.taskId&&activityMinutes(prior)===10)existing++;else conflicts++;continue}
   const record={date:a.date,slot:a.slot,taskId:a.taskId,state:'unknown',source:'plan-confirmed'};
   next.activity.push(record);occupied.set(key,record);added++;
  }
@@ -352,12 +358,12 @@ function planExecutionDraft(base,date,clock,planIds=null){
  const ids=new Set(eligible.map(p=>p.taskId));
  for(let id of ids){
   const t=tasks.get(id),all=next.plans.filter(p=>p.taskId===id);
-  const fullyCovered=all.length>0&&all.every(p=>(p.date<currentDate||p.date===currentDate&&p.start+p.duration<=Math.floor(elapsed/10)*10)&&slots(p).every(slot=>occupied.get(p.date+':'+slot)?.taskId===id));
+  const fullyCovered=all.length>0&&all.every(p=>(p.date<currentDate||p.date===currentDate&&p.start+p.duration<=Math.floor(elapsed/10)*10)&&activityCoversPlan(next,p));
   if(!fullyCovered||next.taskTimer?.taskId===id||next.tasks.some(c=>c.parentId===id&&!c.done)){if(!t.done)held++;continue}
   if(!t.done){t.done=true;t.completedAt=clock.toISOString();if(next.currentTask===id)next.currentTask=null;completed++}
   if(t.actual==null){t.actual=sumActivity(next.activity.filter(a=>a.taskId===id));updatedActual++}
  }
- const unmatched=eligible.filter(p=>!slots(p).every(slot=>occupied.get(p.date+':'+slot)?.taskId===p.taskId)).length;
+ const unmatched=eligible.filter(p=>!activityCoversPlan(next,p)).length;
  return {next,added,existing,conflicts,future,completed,held,updatedActual,unmatched};
 }
 function confirmPlanExecution(planIds=null){
