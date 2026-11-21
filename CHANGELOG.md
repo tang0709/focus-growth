@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Project title rename
+- Double-click a project name (or press F2 when focused) to open a name-only editor with selected text and Enter-to-save. Toggle collapse in place to retain double-click target; preserve project IDs, other fields, hierarchy and sync hooks. Syntax and five mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Confirm full plan execution
 - Add explicit selected-day plan confirmation, copying ended plans into local ten-minute actual activity records in neutral light gray by default. Preserve existing activity, current timers and entered actuals; do not mark partially covered, future or running tasks newly complete. Completion and actual fields use existing sync hooks, activity remains local. Syntax and ten mocked checks pass; live browser acceptance pending.
 
