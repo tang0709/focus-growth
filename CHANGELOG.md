@@ -1,5 +1,10 @@
 # Changelog
 
+## V0.3.1 — Scoped initial migration and readback
+- Added a separate native one-time initializer. It validates snapshot-specific approval and encrypted backup/preview bindings, consumes a durable DPAPI approval record, then performs one fixed-path SHA-conditional initialization and exact readback. Existing production write locks remain intact; no force flag, general update endpoint or automatic retry exists.
+- Added explicit paired remote readback in the normal webpage. It compares only protocol fields, displays revision/SHA/counts and never overwrites local data. Initialization does not enable continuous production writes.
+- Validation: 104 local checks passed: initializer22, native25, preparation27, frontend13, asynchronous7, readback/preparation frontend10. Actual private initialization receipts, browser evidence, approval records and backups remain strictly local; no task contents are included in this repository.
+
 ## V0.3.1 — Production preparation only
 - Added explicit read-only preparation pairing in the normal Pages workspace, encrypted local backups with restore validation, and a local-only migration difference preview. No production initialization or real-data upload is enabled.
 - Enforced the production write lock in both native HTTP routes and GitHub transport. The executable cannot issue first-sync approval; a future approval must bind a fresh preview, backup and local/remote snapshot.
