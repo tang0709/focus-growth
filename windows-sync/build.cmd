@@ -1,11 +1,15 @@
 @echo off
 setlocal
-set "FG_SOURCE=%~dp0"
-if exist "%FG_SOURCE%..\.git" if exist "%FG_SOURCE%..\preparation.js" (
-  if not exist "%FG_SOURCE%web" mkdir "%FG_SOURCE%web"
-  copy /y "%FG_SOURCE%..\index.html" "%FG_SOURCE%web\index.html" >nul
-  copy /y "%FG_SOURCE%..\sync.js" "%FG_SOURCE%web\sync.js" >nul
-  copy /y "%FG_SOURCE%..\preparation.js" "%FG_SOURCE%web\preparation.js" >nul
+cd /d "%~dp0"
+set "FG_CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+if not exist "%FG_CSC%" exit /b 2
+if not exist "web\index.html" (
+  if not exist "..\sync.js" exit /b 3
+  if not exist "web" mkdir "web"
+  copy /y "..\index.html" "web\index.html" >nul
+  copy /y "..\sync.js" "web\sync.js" >nul
+  copy /y "..\preparation.js" "web\preparation.js" >nul
 )
-"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /optimize+ /out:"%FG_SOURCE%FocusGrowthPrepare.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Net.Http.dll /reference:System.Web.Extensions.dll /reference:System.Security.dll "%FG_SOURCE%Core.cs" "%FG_SOURCE%Transport.cs" "%FG_SOURCE%Bridge.cs" "%FG_SOURCE%Program.cs" "%FG_SOURCE%Tests.cs" "%FG_SOURCE%Preparation.cs" "%FG_SOURCE%PreparationProgram.cs" "%FG_SOURCE%PreparationTests.cs"
+"%FG_CSC%" /nologo /target:winexe /out:FocusGrowthSyncV04.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Net.Http.dll /r:System.Web.Extensions.dll /r:System.Security.dll Core.cs Transport.cs Bridge.cs Preparation.cs Tests.cs Continuous.cs ContinuousBridge.cs ContinuousProgram.cs ContinuousTests.cs
 exit /b %errorlevel%
+

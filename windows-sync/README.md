@@ -1,84 +1,35 @@
-# Focus & Growth Windows 同步服务 · V0.3.1 正式同步准备
+# Focus & Growth V0.4 Windows companion
 
-本版本只完成 Option A：本机加密备份、恢复校验、正式仓库只读快照和本机差异预览。**真实数据上传：未执行；正式仓库写入：未执行**。首次正式写入尚无授权签发或执行实现，配对和 READY_FOR_APPROVAL 均不代表上传授权。
+Continuous projects/tasks/plans synchronization is implemented. Production starts **paused and without write authorization**. Pairing alone only permits encrypted local backup and read-only comparison. This release does not issue production consent.
 
-## 本版本启动方法
+## Run
 
-1. 同一 Windows 用户双击 `FocusGrowthPrepare.exe` 或 `Start-Preparation.cmd`。默认即准备模式，监听 `127.0.0.1:18418`；读取已有 Windows 凭据，不要求再次输入 Token。
-2. 打开固定正常工作台 `https://tang0709.github.io/focus-growth/`（不要加 `syncTest=1`），点击“正式同步准备 · 只读”。用准备窗口的配对码配对，并在 Windows 核对来源后选择 Yes。配对只授权本机备份和只读比较，15分钟会话只在内存保存。
-3. 点击“备份并生成本机差异预览”。原始完整 JSON 只发送到已配对的回环服务；先加密备份并恢复校验，再通过 GitHub GET 读取正式快照。详细逐字段前后值仅显示在 Windows 本地窗口和 DPAPI 加密文件；网页/报告只显示计数和摘要。
-4. 查看本机 `PRODUCTION-DRY-RUN.md/json`。未配对、来源缺失/错配、演示/空白工作区、无效引用、未知 schema、远程读取失败、同 ID 冲突会拒绝或标记 BLOCKED。离线不使用未验证的空远程替代，恢复网络后须重新生成预览。本地修改会使已有预览过期。
-5. 完成后关闭窗口或点击 Stop preparation service。第二次明确确认前保持停止；本版本任何生产写入 API 均返回授权错误，不能靠参数或配置解锁。
+Use Windows 10/11, .NET Framework 4.x and the same Windows account that owns the existing Generic Credential `FocusGrowthSync/GitHub`. Never paste a GitHub token into the website, a command, or a configuration file.
 
-## 本机备份与恢复
+- Run `FocusGrowthSyncV04.exe --production-readonly` (or double-click). Open the existing https://tang0709.github.io/focus-growth/ page and its V0.4 sync panel. Pair using the temporary native code, confirm the exact Pages origin in Windows, then use read-only verification. Production port: 18421.
+- For disposable tests only: run `FocusGrowthSyncV04.exe --synthetic-v04`; open `http://127.0.0.1:18420/?syncTest=1`. Pair, then add the clearly marked virtual sample. The browser uses `start-workbench-sync-test-v04`, and GitHub uses a device-specific `sync/tests/v04-<device>.json`. Production data is never used as a test fixture.
+- Native Pause stops write processing while keeping the encrypted queue. Browser Pause also stops incoming application. Closing/restarting the companion starts paused. Keep one paired tab per workspace. Pairing sessions expire after 15 minutes; New pairing code pauses the service and revokes previous sessions.
+- `build.cmd` compiles the explicit source list using the Windows Framework compiler. `FocusGrowthSyncV04.exe --selftest` runs synthetic tests without GitHub credentials and writes count-only test results beside the executable. `node tests/frontend.cjs`, `node tests/frontend-async.cjs`, `node tests/preparation-frontend.cjs`, and `node tests/continuous-frontend.cjs` run the JavaScript tests (Node required for development only).
 
-备份位置：`%LOCALAPPDATA%\FocusGrowthSync\preparation-v031\backups\`，DPAPI CurrentUser 加密。`PRODUCTION-BROWSER-BACKUP.json` 记录更新前的显式浏览器导出备份；`PRODUCTION-METADATA-BACKUP.json` 记录同步元数据、可编辑文件及原 V0.3 运行包的备份证明；最终预览报告指向最新完整浏览器快照。必须同时保留报告中的路径、SHA 和对应 `.dat` 文件，且使用同一 Windows 用户；DPAPI 不是跨账号可移植备份。
+This is a user-session Windows companion, not an installed Windows SCM service. No startup entry, OS-wide activity monitoring, firewall change, browser security bypass, or credential prompt is installed.
 
-程序写入备份后立即解密、比对 SHA-256、解析 JSON、验证应用结构和引用关系，在内存中恢复；不会导入或覆盖现有网页。可用 `Verify-Backup.ps1 -ManifestPath <报告路径>` 重复只读解密校验。若本机策略不允许 PowerShell 脚本，请保留策略，使用程序重新备份校验；源码构建可用 `build.cmd`，不要求修改系统执行策略。
+## Data and safety
 
-真实恢复时先停止计时/同步并另备份当前状态，在同一 Windows 用户的独立测试工作区解密检查；通过原网页 JSON 导入恢复需要另行明确确认，因为会替换数据。本阶段不执行导入。桌面原始导出文件由用户提供并保留，不自动删除。
+Only the existing protocol's allowed project/task/plan fields can cross the private repository boundary. Full local browser backups and queues are DPAPI CurrentUser encrypted under `%LOCALAPPDATA%/FocusGrowthSync/v04-production` or `v04-synthetic`. Keep the same Windows profile and retain these directories. Full restore is a separate, explicitly confirmed operation; do not overwrite browser data to test recovery. Each saved checkpoint is decrypted and digest-verified without overwriting the source.
 
-`PRODUCTION-*` 报告、所有加密备份、用户导出、元数据、配对会话和私人内容均不得提交 Git 或加入运行包。浏览器队列仅本地暂存允许的字段，不会自动提交。排程不会自动改期或完成，空远程不能清除本地数据。
+Field-level three-way merge uses stable IDs, an immutable in-flight operation and durable subsequent edits. Writes use the current GitHub blob SHA and unique operation IDs. Same-field conflicts require an explicit choice; deletions are blocked. Empty, uninitialized, regressed or unsupported production snapshots cannot clear local records. Local activity, history, task timer, notes, theme and quadrant state remain in the browser; plan intervals never become actual work records. Completion changes for a running timer are blocked until reviewed.
 
-## 安全及验证范围
+The native program polls approximately every five seconds using conditional reads. The visible paired page checks the native cache every five seconds; browser background throttling can delay display. Offline and transient failures back off, preserve operations and retry. Permission/rate-limit errors are not bypassed by repeated manual sync. The test network buttons inject transport failures only; they do not disable Windows networking. A long outage/expired session may require pairing again before browser delivery.
 
-正式路径在 Bridge 和 Cloud 两层锁定。不存在授权发放端点或 `--force` 参数；未来首同步必须独立开发一次性批准记录，绑定新预览、备份、当前本地摘要和远程 SHA/revision，变更后重新审阅。保留 schema v1、原存储键和所有旧功能。实时秒计时与固定10分钟活动统计独立。合成同步队列保留不可变 pending，并持久化下一笔连续编辑，确认响应后合并最新本地状态。
+Exact Origin/Host checks, loopback-only listeners and short-lived memory-only pairing sessions protect the local API. The GitHub PAT is read only by the native transport and never returned. A compromised Windows user account or malicious code on the trusted website remains outside these protections.
 
-本轮自动测试：原生25、网页13、异步7、准备原生27、准备网页8、HTTP安全9，共89项。实际浏览器备份、部署和预览结果见本机 V031-REPORT.md；测试计数不替代实际验收。
+## Later production activation — requires new explicit approval
 
-V0.3 合成模式可继续使用旧 `FocusGrowthSync.exe`，或新程序显式 `--synthetic`；仍在18417，只允许隔离测试路径。下面保留旧版本操作与历史说明。
+Do not perform these steps during the V0.4 test/preparation phase.
 
----
+1. Obtain explicit user authorization for ongoing allowed-field production writes. Confirm the current real browser profile, local backup recovery proof, remote private identity, and exact read-only baseline. Resolve differences through a new reviewed preview; never force a baseline.
+2. A local operator creates a **local-only**, four-field consent manifest: `consentReference`, `expectedRemoteSha`, `expectedProjectionDigest`, `expectedBackupSha256`. Use the current verified native attach backup and protocol projection digests. Do not include a PAT or task contents. Never publish the manifest.
+3. Run `FocusGrowthSyncV04.exe --authorize-production <absolute-manifest-path>`. This separate native entry validates the encrypted backup and remote baseline. The user must check the initially unchecked scope checkbox and press the grant button. There is no HTTP grant endpoint or force flag.
+4. The DPAPI grant is scoped to this device, the private repository, `sync/state.json` and allowed fields, expires after seven days, and leaves the service paused. Start/re-pair the companion, verify baseline, then explicitly Enable / Resume. Expiry stops writes. Pause is available in both native and web UI; pausing preserves queued work.
 
-# V0.3 虚拟测试版历史说明
-
-当前仅允许虚拟工作区。正式 `sync/state.json` 被程序路径白名单锁定，不能通过网页参数、API 或启动参数打开正式写入。真实数据首次同步需用户另行确认，届时还需完成生产迁移的独立验收。
-
-## 启动、配对与停止
-
-1. 使用保存了 `FocusGrowthSync/GitHub` 凭据的同一 Windows 用户双击 `FocusGrowthSync.exe`。不需要再次填写 GitHub Token。需要 .NET Framework 4.x，使用 Windows 自带组件，无第三方运行依赖。
-2. 点击本地程序的 **Open local synthetic workbench**。本地预览地址为 `http://127.0.0.1:18417/?syncTest=1`。
-3. 在程序中点击 **New pairing code**，将一次性配对码复制到网页“虚拟同步”面板，点击“配对本地服务”，再在 Windows 窗口核对来源并选择 Yes。配对码5分钟有效、使用一次作废；会话15分钟有效，刷新、断开或重启后需重新配对。配对码不是 GitHub Token。
-4. 用“添加虚拟任务”或原有任务界面编辑合成项目、任务和排程，点击“手动同步”。原有 JSON 导入导出仍保留。
-5. 关闭本地程序或点击 **Stop service** 停止轮询和监听。没有注册系统服务、开机自启或全电脑输入监测。
-
-原始网页使用的 `start-workbench-v1` 不变。只有显式 `?syncTest=1` 使用 `start-workbench-sync-test-v1`，以免污染真实浏览器任务。配对会话只在内存中保存；网页不接收 GitHub PAT。测试工作区配对时会先在浏览器保存一份本地完整备份。浏览器禁用存储时不得继续同步。
-
-## 同步行为
-
-- Windows 服务仅监听 `127.0.0.1:18417`。云端仅允许 `tang0709/focus-growth-data`、`main` 分支和 `sync/tests/<工作区ID>.json`；每次写入前确认仓库身份及 private=true。
-- 项目、任务、排程按稳定 ID 和字段三方合并，保留无关记录。相同字段的并发更改和任何删除停止同步，不自动选一方。冲突面板显示各字段的两端值，必须逐字段明确选择；提交前备份，旧冲突队列保留为加密备份。远端或本地数据变化时要求重新核对，不能清空队列强行覆盖。
-- 使用 GitHub blob SHA 条件更新；409/422 后重新读取并检测冲突；每个变更使用固定 operationId，写入后读回验证。成功变更增加 revision；不确定结果和离线时保留原操作与未发送队列。
-- 每30秒轮询，使用 ETag 条件读取；故障后退避。网页渲染和 `save()` 不触发网络同步，只有项目、任务、排程修改进入显式脏标记路径并做防抖。
-- 不上传活动、想法、备注、主题、启动状态、完整历史、当前运行计时器或 timerMs。计时 opt-in 尚未启用。传入数据通过原有网页验证路径应用，保留本地备注、计时与其他集合。
-- Windows 元数据、缓存、原操作队列使用当前用户 DPAPI 加密，原子替换并保留前一版备份，存储在 `%LOCALAPPDATA%\FocusGrowthSync\synthetic-v1`，不在仓库或网页根目录。损坏数据停止使用并保留原文件。
-
-## 网络与威胁边界
-
-健康路由不返回个人数据。其他 API 要求精确 Host、允许的 Origin、短期会话和自定义防 CSRF 请求头；配对需原生界面确认。严格限定 JSON、方法、路由、请求大小，禁用任意文件访问、命令执行及 PAT API。错误信息为固定代码，不记录 HTTP 头、响应正文或任务内容。
-
-允许来源是本地页面与 `https://tang0709.github.io`。GitHub Pages 同源下的其他项目共享 Origin，因此 Origin 本身不代表可信；远程页面的配对仍必须核对用户意图并经本地确认。本轮远程配对仅涉及合成数据，正式私有操作优先使用本地受信前端。公开页面代码可以更新，不能视为持久信任锚。
-
-Chrome 对公网到回环请求可能要求本地网络访问权限。不得修改浏览器 flags、关闭安全保护或接受证书警告来绕过限制；若实际 Pages 测试不适用，应使用本地受信工作台或后续原生消息扩展。[Chrome 官方本地网络访问说明](https://developer.chrome.com/blog/local-network-access)
-
-## 开发与复现测试
-
-在 PowerShell 7 中执行 `./build.ps1` 编译。源码分为 `Core.cs`（schema/合并/配对/持久化）、`Transport.cs`（凭据/GitHub/状态机）、`Bridge.cs`（回环 HTTP）、`Program.cs`（本地控制窗口）、`Tests.cs`（合成测试）。
-
-- `FocusGrowthSync.exe --selftest`：纯本地单元测试，结果 `unit-results.json`。
-- `FocusGrowthSync.exe --cloud-test`：读取已有凭据，在随机私有测试文件执行写入、更新及过期 SHA 测试，然后删除文件；结果 `cloud-results.json`。
-- `node tests/frontend.cjs`：隔离 VM 中的网页逻辑及兼容性测试；结果 `frontend-results.json`，不能代替真实浏览器测试。
-- 启动服务后 `node tests/security.cjs`：真实 HTTP 边界测试；结果 `security-results.json`。
-
-临时单元测试文件位于项目 `work/sync-build`，收尾仅清理这些可再生成文件；必要源码、可运行程序和最终报告保留在 outputs/。
-
-云端测试的虚拟内容会留在私有 Git 历史中。主程序的独立虚拟工作区文件用于持续测试，非正式数据；清理时必须针对确切路径和当前 SHA，不修改正式文件。
-
-## 当前验收与部署
-
-V0.3 已发布：正常网页 https://tang0709.github.io/focus-growth/ ，隔离虚拟同步工作区 https://tang0709.github.io/focus-growth/?syncTest=1 。53项本地测试、实际本地双向同步、Pages来源配对及线上写回均已验证。详情见本地交付的 TEST-REPORT.md 和 summary.json。普通工作区同步默认关闭，正式 sync/state.json 写入仍锁定；真实首同步需另行确认、完整备份和迁移验收。当前运行程序可继续使用，无需重新配置GitHub凭据。
-
-## 一次性初始化与正式只读回读
-首次正式迁移使用独立工具：仓库源码位于 windows-sync/first-migration，本机交付位于 outputs/migration-service。它只在快照绑定校验通过并消耗一次性授权后初始化一次。该窗口和Cloud.Write仍拒绝正式写入，不因迁移成功自动启用持续双向写入。
-
-迁移后，在正常Pages面板重新配对，点击“读取远程并核验（不改本地）”。面板读取协议白名单状态、比较本地允许字段并显示远程revision/SHA/数量；不应用远端数据、不修改计时或历史。初始化后的提示按只读核验状态显示。
+The previous one-time migration authorization cannot enable this flow. Never initialize the already initialized remote again. Keep synthetic fixtures separate from production. Shared reports and Git commits must contain only generic code, counts and digests.

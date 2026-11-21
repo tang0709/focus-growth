@@ -67,7 +67,7 @@ public static class Schema {
   }
   if(conflicts.Count==0)Validate(result);return result;
  }
- public static bool SameData(Dictionary<string,object>a,Dictionary<string,object>b){return Collections.All(k=>J.Equal(a[k],b[k]));}
+ public static bool SameData(Dictionary<string,object>a,Dictionary<string,object>b){return Collections.All(k=>{var x=Map(a,k);var y=Map(b,k);return x.Count==y.Count&&x.All(p=>y.ContainsKey(p.Key)&&J.Equal(p.Value,y[p.Key]));});}
 }
 public sealed class Disk {
  readonly string folder;public Disk(string path){folder=path;Directory.CreateDirectory(folder);}

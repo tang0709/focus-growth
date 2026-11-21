@@ -1,5 +1,10 @@
 # Changelog
 
+## V0.4 — Continuous sync, separately gated production
+- Added five-second conditional polling, enable/pause, DPAPI offline queues, stable-ID field-level three-way merge, SHA conditional writes and operation deduplication. Production starts read-only and requires later explicit user approval through a separate native grant flow.
+- Preserved local history, notes, theme, quadrant, timers and ten-minute statistics; checkpoints and stale-tab guards protect incoming changes. Same-field conflicts require a choice; deletion propagation is blocked.
+- Validation: 85 automated checks passed. Actual isolated browser/GitHub tests verified both directions, transport outage/recovery, explicit conflicts and running-timer preservation. Personal reports and backups remain local.
+
 ## V0.3.1 — Scoped initial migration and readback
 - Added a separate native one-time initializer. It validates snapshot-specific approval and encrypted backup/preview bindings, consumes a durable DPAPI approval record, then performs one fixed-path SHA-conditional initialization and exact readback. Existing production write locks remain intact; no force flag, general update endpoint or automatic retry exists.
 - Added explicit paired remote readback in the normal webpage. It compares only protocol fields, displays revision/SHA/counts and never overwrites local data. Initialization does not enable continuous production writes.

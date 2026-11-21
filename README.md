@@ -1,8 +1,8 @@
-# Focus & Growth V0.3.1 preparation
+# Focus & Growth V0.4
 
-The stable app URL remains https://tang0709.github.io/focus-growth/. Normal workspace users can explicitly pair with the Windows preparation companion for encrypted local backup and a local-only difference preview. Production initialization and real-data upload remain locked in the native service and transport; a second explicit consent and fresh preview are required before a future migration implementation.
+Stable URL: https://tang0709.github.io/focus-growth/. The original dashboard and local storage schema remain intact. Windows continuous synchronization supports protocol projects/tasks/plans, offline queues and explicit field conflicts. Production starts paused and read-only. Pairing never grants ongoing production writes; a new explicit user approval and separate native scoped grant are required.
 
-Build and launch instructions: [Windows companion](windows-sync/README.md). Run `windows-sync/build.cmd` on Windows, then `FocusGrowthPrepare.exe`; no GitHub token is entered in the webpage. Browser data is never automatically uploaded on load or pairing. Detailed previews and backups must stay local.
+Build and launch: [Windows companion](windows-sync/README.md). Use `windows-sync/build.cmd` and run `FocusGrowthSyncV04.exe --production-readonly`. The existing Windows Credential Manager credential stays native; never enter a PAT in the browser. Virtual tests use the separate `--synthetic-v04` workspace. Encrypted backups and personal reports stay local.
 
 ---
 
