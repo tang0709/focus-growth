@@ -4,6 +4,7 @@
 .tasktimer{display:flex;align-items:center;gap:12px;padding:12px;margin:0 0 13px;border:1px solid var(--line);border-radius:11px;background:linear-gradient(100deg,#f4f7ff,#fff);min-width:0}.timerinfo{flex:1;min-width:0}.timerinfo b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.timerdigits{font-size:26px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:.5px;white-space:nowrap}.timercontrols{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.timeridle{background:#f9fafc}.footclock{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}.footer .footnotice{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.footer>div{min-width:0}.timerinfo small{display:block}.runbtn.timerchosen{background:#e6edff;border-radius:5px;padding:3px 6px}@media(max-width:1200px){.footer .footnotice{display:none}.tasktimer{flex-wrap:wrap}} 
 .archive-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 5px}.archive-toolbar button{flex:1;white-space:nowrap}.archive-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}.archive-row>div{min-width:0;flex:1;overflow-wrap:anywhere}.archive-row small{display:block}.archive-row button{flex-shrink:0}
 .group .group-toggle{display:flex;align-items:center;gap:6px;flex:1;min-width:0;padding:3px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:4px}.group .group-toggle:hover{background:#f0f3f8}.group .group-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.group .group-arrow{flex:0 0 14px;text-align:center}.group .group-name{min-width:0;overflow-wrap:anywhere;flex:1}.group>small,.group>button.small{flex-shrink:0}
+.project-order-controls{display:flex;flex-direction:column;flex:0 0 auto;gap:2px}.project-order-btn{display:flex;justify-content:center;align-items:center;width:23px;height:21px;padding:0;border:1px solid var(--line);border-radius:5px;font-size:13px;line-height:1;color:inherit;background:var(--paper);cursor:pointer}.project-order-btn:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}.project-order-btn:disabled{opacity:.28;cursor:default}.project-order-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 </style></head><body><header class="top"><div class="brand"><div class="logo"></div><div><b>专注 · 成长</b><small>先定位此刻，再决定下一步</small></div></div><nav class="nav" id="nav"><button data-page="work" class="active">⌂ 工作台</button><button data-page="projects">▤ 长期任务</button><button data-page="stats">▥ 统计分析</button><button data-page="settings">⚙ 设置</button></nav><div class="tools"><span id="demoBadge" class="pill"></span><button onclick="openSync()">对话更新</button><button onclick="toggleAI()">AI 助手</button></div></header><main class="wrap"><div id="metrics" class="metrics"></div><div class="main" id="work"><aside id="left" class="panel left"><div class="panelhead"><h2>启动状态</h2><button class="small" id="collapse" onclick="toggleLeft()">收起</button></div><div class="leftbody" id="leftbody"></div></aside><section class="panel"><div class="panelhead"><div class="headrow"><h2 id="dateLabel"></h2><button class="small" onclick="shiftDay(-1)">‹</button><button class="small" id="todayButton" onclick="goToday()">今天</button><button class="small" onclick="shiftDay(1)">›</button><input type="date" id="dateInput" style="width:132px;font-size:12px;padding:5px" onchange="setDay(this.value)"></div><div class="seg" id="viewButtons"><button onclick="setView('day')" data-view="day">时间轴</button><button onclick="setView('week')" data-view="week">周</button><button onclick="setView('month')" data-view="month">月</button></div></div><div id="taskTimerPanel"></div><div id="center"></div></section><aside class="panel right" id="right"></aside></div><section class="panel fullview" id="projects"></section><section class="panel fullview" id="stats"></section><section class="panel fullview" id="settings"></section></main><footer class="footer"><div><span class="dot"></span><b id="footerState">未选择状态</b>　<span id="footerTime"></span></div><div id="footerTimer"></div><span class="muted footnotice">原型：仅检测本网页内活动，未接入 Windows 后台监测</span><div><button class="small" onclick="recordManual()">补录工作</button> <button class="small" onclick="openSync()">数据同步</button></div></footer><div id="modalRoot"></div><div id="aiRoot"></div><div id="toastRoot"></div><input type="file" id="importFile" accept=".json,application/json" hidden><script>
 'use strict';
 // Before the sync preview can touch the normal workspace, retain its exact local JSON.
@@ -66,6 +67,31 @@ function openTaskArchive(){
 }
 function renderRight(){reconcileTaskArchive();let groups=[...db.projects.map(p=>({id:p.id,name:p.name})),{id:null,name:'独立任务'}], filter=t=>!search||t.name.toLowerCase().includes(search.toLowerCase());$('right').innerHTML=`<div class="panelhead"><h2>任务拆解</h2><button class="small primary" onclick="editTask()">＋ 新建</button></div><input placeholder="搜索任务..." style="width:100%" value="${esc(search)}" oninput="search=this.value;renderTreeOnly()"><div class="archive-toolbar"><button class="small" onclick="archiveCompletedTasks()" ${archiveCandidates().length?'':'disabled'}>归档已完成</button><button class="small" onclick="openTaskArchive()">已归档 (${archivedTasks().length})</button></div><div id="tree">${treeHTML(groups,filter)}</div><div class="sub sectiongap"><div class="panelhead"><h3>待排程任务</h3><small>可拖入时间轴</small></div>${activeTasks().filter(t=>!db.plans.some(p=>p.taskId===t.id&&p.date===day)).filter(filter).map(t=>taskHTML(t,0)).join('')||'<div class="empty">暂无待排程任务</div>'}</div><button style="width:100%" onclick="toggleAI(true)">AI 辅助拆解 / 通过对话更新</button>`}
 
+const PROJECT_ORDER_KEY=STORE+'-project-display-order';
+let projectDisplayOrder=[];
+try{let raw=JSON.parse(localStorage.getItem(PROJECT_ORDER_KEY)||'[]');if(Array.isArray(raw))projectDisplayOrder=[...new Set(raw.filter(id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,120}$/.test(id)))]}catch{}
+function orderedProjectIds(){
+ const ids=db.projects.map(p=>p.id),known=new Set(ids),order=projectDisplayOrder.filter(id=>known.has(id)),included=new Set(order);
+ return [...order,...ids.filter(id=>!included.has(id))]
+}
+function orderProjectGroups(groups){
+ const rank=new Map(orderedProjectIds().map((id,i)=>[id,i]));
+ return [...groups].sort((a,b)=>(rank.get(a.id)??Number.MAX_SAFE_INTEGER)-(rank.get(b.id)??Number.MAX_SAFE_INTEGER))
+}
+function moveProjectGroup(id,direction){
+ const order=orderedProjectIds();if(!order.includes(id)||(direction!=='top'&&direction!=='bottom'))return;
+ const next=order.filter(x=>x!==id);if(direction==='top')next.unshift(id);else next.push(id);
+ if(next.every((x,i)=>x===order[i]))return;
+ projectDisplayOrder=next;
+ try{localStorage.setItem(PROJECT_ORDER_KEY,JSON.stringify(next))}catch{toast('排序仅保留至本次页面关闭')}
+ renderTreeOnly();
+ const control=$('project-move-'+id+'-'+direction);
+ if(control&&!control.disabled)control.focus?.({preventScroll:true});else $('group-toggle-'+projectGroupKey(id))?.focus?.({preventScroll:true});
+}
+function projectOrderControls(id,order){
+ if(id===null)return '';
+ return `<div class="project-order-controls"><button type="button" class="project-order-btn" id="project-move-${safeId(id)}-top" title="置顶项目" aria-label="置顶项目" onclick="moveProjectGroup('${safeId(id)}','top')" ${order[0]===id?'disabled':''}>↑</button><button type="button" class="project-order-btn" id="project-move-${safeId(id)}-bottom" title="置底项目" aria-label="置底项目" onclick="moveProjectGroup('${safeId(id)}','bottom')" ${order.at(-1)===id?'disabled':''}>↓</button></div>`
+}
 const GROUP_COLLAPSE_KEY=STORE+'-collapsed-project-groups';
 let collapsedProjectGroups=new Set();
 try{let raw=JSON.parse(localStorage.getItem(GROUP_COLLAPSE_KEY)||'[]');if(Array.isArray(raw))collapsedProjectGroups=new Set(raw.filter(x=>typeof x==='string'&&/^(?:project-[A-Za-z0-9_-]{1,120}|independent)$/.test(x)))}catch{}
@@ -81,10 +107,11 @@ function toggleProjectGroup(key){
 }
 function treeHTML(groups,filter){
  function children(pid,parent,depth){return db.tasks.filter(t=>!isOptionalTemplate(t)&&(t.projectId||null)===pid&&(t.parentId||null)===parent).map(t=>{let nested=children(pid,t.id,depth+1);if(isArchivedTask(t))return nested;if(!filter(t)&&!nested)return '';return taskHTML(t,depth)+nested}).join('')}
- return groups.map(g=>{
+ const order=orderedProjectIds();
+ return orderProjectGroups(groups).map(g=>{
  const html=children(g.id,null,0),p=project(g.id),key=projectGroupKey(g.id),closed=collapsedProjectGroups.has(key);
  if(!html&&!p)return '';
- return `<div class="tasktree"><div class="group"><button type="button" class="group-toggle" id="group-toggle-${safeId(key)}" aria-expanded="${!closed}" aria-controls="group-content-${safeId(key)}" title="${closed?'展开':'收起'}项目" onclick="toggleProjectGroup('${safeId(key)}')"><span class="group-arrow" aria-hidden="true">${closed?'▸':'▾'}</span><span class="group-name">${esc(g.name)}</span></button>${p?`<small>${progress(p).k}/${progress(p).n}</small>`:''}<button class="small" title="新增任务" onclick="editTask(null,${g.id?"'"+safeId(g.id)+"'":"null"})">＋</button></div><div id="group-content-${safeId(key)}"${closed?' hidden':''}>${closed?'':html||'<div class="empty">暂无未归档任务</div>'}</div></div>`
+ return `<div class="tasktree"><div class="group"><button type="button" class="group-toggle" id="group-toggle-${safeId(key)}" aria-expanded="${!closed}" aria-controls="group-content-${safeId(key)}" title="${closed?'展开':'收起'}项目" onclick="toggleProjectGroup('${safeId(key)}')"><span class="group-arrow" aria-hidden="true">${closed?'▸':'▾'}</span><span class="group-name">${esc(g.name)}</span></button>${p?`<small>${progress(p).k}/${progress(p).n}</small>`:''}${p?projectOrderControls(g.id,order):''}<button class="small" title="新增任务" onclick="editTask(null,${g.id?"'"+safeId(g.id)+"'":"null"})">＋</button></div><div id="group-content-${safeId(key)}"${closed?' hidden':''}>${closed?'':html||'<div class="empty">暂无未归档任务</div>'}</div></div>`
  }).join('')||'<div class="empty">添加第一个任务</div>'
 }
 function renderTreeOnly(){$('tree').innerHTML=treeHTML([...db.projects.map(p=>({id:p.id,name:p.name})),{id:null,name:'独立任务'}],t=>!search||t.name.toLowerCase().includes(search.toLowerCase()))}
