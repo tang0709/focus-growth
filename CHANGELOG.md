@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Independent work-session recording
+- Start work immediately without selecting a task. Show a live dashed gray preview and persist unassigned actual activity in existing ten-minute slots, including cross-midnight sessions and reload recovery. Allow later assignment via existing actual-block editor. Preserve occupied slots, task timers and local privacy. Syntax and 11 mocked checks pass; live browser acceptance pending.
+
 ## V0.4 — Actual timeline marquee selection
 - Drag a mouse selection rectangle in the actual timeline to select entire intersected activity blocks and assign a shared state. Preserve individual click editing and all other task and activity fields; reject stale selections. State records remain browser-local. Syntax and 11 mocked regression checks pass; live browser acceptance pending.
 
