@@ -1,5 +1,8 @@
 # Changelog
 
+## V0.4 — Task timer actual records
+- Persist actual task intervals when pausing, stopping, switching or completing a task, with task identity and state, minute-resolution activity, cumulative seconds, and non-overwrite overlap protection. Distinguish stopping from completion; reveal saved records and offer explicit old-timer recovery with user-supplied times. Sync only allowed task duration/completion fields; raw timer and activity stay local. Syntax and 16 focused mocked checks passed before final integration; browser acceptance pending.
+
 ## V0.4 — Completion-based timeline entries
 - On explicit task completion, infer an interval from the preceding same-day actual task or task timer, update a sole plan or add one, and record minute-precision local actuals. Preserve other tasks and occupied activity; allow nonoverlapping partial slots, update statistics and editing ranges, and reconcile synchronized completions. Syntax and 14 focused mocked checks passed; live browser acceptance pending. Activity remains local.
 
