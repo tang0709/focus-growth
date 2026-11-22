@@ -241,9 +241,10 @@ function settleTaskTimer(now=Date.now(),outcome='ended'){
  try{window.FocusGrowthStorageGuard?.before()}catch{toast('页面数据已变化，请刷新重试');return false}
  db=draft.next;return draft
 }
-function beginTaskTimer(id){let t=task(id);if(!t||t.done)return false;if(db.taskTimer?.taskId!==id){let now=Date.now();if(settleTaskTimer(now,'switched')===false)return false;db.taskTimer={taskId:id,startedAt:now,state:db.state||'unknown'}}db.currentTask=id;day=today();view='day';save();return true}
+function beginTaskTimer(id){let t=task(id);if(!t||t.done)return false;try{window.FocusGrowthStorageGuard?.before()}catch{toast('页面数据已变化，请刷新重试');return false}if(db.taskTimer?.taskId!==id){let now=Date.now();if(settleTaskTimer(now,'switched')===false)return false;db.taskTimer={taskId:id,startedAt:now,state:db.state||'unknown'}}db.currentTask=id;day=today();view='day';save();return true}
+function revealTaskTimerRecord(now){const axis=$('axiswrap'),t=new Date(now);if(axis)axis.scrollTop=Math.max(0,(t.getHours()*60+t.getMinutes()-120)*SCALE)}
 function pauseTaskTimer(){const r=settleTaskTimer(Date.now(),'paused');if(r===false)return;render();toast('已暂停并保存实际记录'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))}
-function stopTaskTimer(){const r=settleTaskTimer(Date.now(),'ended');if(r===false)return;db.currentTask=null;render();toast('任务计时已结束，已保存 '+r.added+' 分钟新增实际工时；未自动标记完成'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))}
+function stopTaskTimer(){const now=Date.now(),r=settleTaskTimer(now,'ended');if(r===false)return;db.currentTask=null;if(r.added){day=dateKey(new Date(now));view='day';mode='compare'}render();if(r.added)revealTaskTimerRecord(now);toast('任务计时已结束，已保存 '+r.added+' 分钟新增实际工时；未自动标记完成'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))}
 
 function recoverOldTimer(){
  const candidates=db.tasks.filter(t=>Number.isFinite(t.timerMs)&&t.timerMs>0).sort((a,b)=>b.timerMs-a.timerMs);
@@ -333,13 +334,13 @@ function recoverRecentCompletionPlan(base){
 }
 function completeTask(id,done){
  let t=task(id);if(!t)return;try{window.FocusGrowthStorageGuard?.before()}catch{return toast('页面数据已变化，请刷新重试')}
- const newlyDone=done&&!t.done,clock=new Date(),hadTimedWork=db.history.some(h=>h.type==='task-timer-interval'&&h.taskId===id)||db.taskTimer?.taskId===id;
- if(done&&db.taskTimer?.taskId===id){if(settleTaskTimer(clock.getTime(),'completed')===false)return;t=task(id)}
+ const newlyDone=done&&!t.done,clock=new Date(),hadTimedWork=db.history.some(h=>['task-timer-interval','task-timer-recovered'].includes(h.type)&&h.taskId===id)||db.taskTimer?.taskId===id;
+ let savedInterval=false;if(done&&db.taskTimer?.taskId===id){const r=settleTaskTimer(clock.getTime(),'completed');if(r===false)return;t=task(id);savedInterval=r.added>0}
  if(!done&&archivedTaskIds.has(id)){let next=new Set(archivedTaskIds);next.delete(id);persistArchive(next)}
  t.done=done;
  if(done){if(newlyDone)t.completedAt=clock.toISOString();if(newlyDone&&!hadTimedWork)applyTaskCompletionTimeline(db,id,clock);if(actualFor(id)>0)t.actual=Math.max(t.actual??0,actualFor(id));if(db.currentTask===id)db.currentTask=null}
  else delete t.completedAt;
- render()
+ if(savedInterval){day=dateKey(clock);view='day';mode='compare'}render();if(savedInterval)revealTaskTimerRecord(clock.getTime())
 }
 const AXIS_HEIGHT_KEY=STORE+'-axis-height', AXIS_MIN=240, AXIS_MAX=1185;
 function clampAxisHeight(n){return Math.max(AXIS_MIN,Math.min(AXIS_MAX,Math.round(n)))}
