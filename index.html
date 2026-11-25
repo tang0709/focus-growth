@@ -601,14 +601,14 @@ function dragPlan(e,id){
 }
 function endPlanDrag(){
  activePlanDrag=null;
- document.querySelectorAll('.lane.actual-drop-target').forEach(el=>el.classList.remove('actual-drop-target'));
+ document.querySelectorAll('.lane.actual-drop-target').forEach(el=>el.classList.remove('actual-drop-target'));document.querySelectorAll('.block.actual.actual-drop-hover').forEach(el=>el.classList.remove('actual-drop-hover'));
 }
 
 function actualPlanDragOver(e,lane){
  if(!activePlanDrag||planSelectMode||activePlanDrag.date!==day)return;
- e.preventDefault();e.dataTransfer.dropEffect='copy';lane.classList.add('actual-drop-target')
+ e.preventDefault();e.dataTransfer.dropEffect='copy';lane.classList.add('actual-drop-target');for(const el of lane.querySelectorAll('.block.actual.actual-drop-hover'))el.classList.remove('actual-drop-hover');e.target.closest?.('[data-actual-start][data-actual-end]')?.classList.add('actual-drop-hover')
 }
-function actualPlanDragLeave(e,lane){if(!lane.contains(e.relatedTarget))lane.classList.remove('actual-drop-target')}
+function actualPlanDragLeave(e,lane){if(!lane.contains(e.relatedTarget)){lane.classList.remove('actual-drop-target');for(const el of lane.querySelectorAll('.actual-drop-hover'))el.classList.remove('actual-drop-hover')}}
 function dropPlanAsActual(e,lane){
  if(!activePlanDrag||planSelectMode||activePlanDrag.date!==day)return;
  e.preventDefault();lane.classList.remove('actual-drop-target');
@@ -616,14 +616,16 @@ function dropPlanAsActual(e,lane){
  let payload;try{payload=JSON.parse(e.dataTransfer.getData('text/plain'))}catch{return toast('拖拽信息无效，未修改记录')}
  if(payload?.planId!==dragged.id)return toast('拖拽来源不匹配，未修改记录');
  const p=db.plans.find(x=>x.id===dragged.id);if(!p)return toast('原计划已经改变，请刷新后重试');
+ const target=e.target.closest?.('[data-actual-start][data-actual-end]');
+ const targetStart=target?Number(target.dataset.actualStart):null,targetEnd=target?Number(target.dataset.actualEnd):null;
  const at=(e.clientY-lane.getBoundingClientRect().top)/SCALE-dragged.offset;
- const start=Math.max(0,Math.min(1440-p.duration,Math.round(at/10)*10));
- const result=actualPlanDropDraft(db,p.id,day,start,new Date());
+ const start=target?targetStart:Math.max(0,Math.min(1440-p.duration,Math.round(at/10)*10));
+ const result=target?assignPlanToExistingActualDraft(db,p.id,day,targetStart,targetEnd,new Date()):actualPlanDropDraft(db,p.id,day,start,new Date());
  if(result.error)return toast(result.error);
  const err=validate(result.next);if(err)return toast('未登记实际记录：'+err);
  try{window.FocusGrowthStorageGuard?.before()}catch{return toast('数据已变化，请刷新后重试')}
  db=result.next;mode='compare';render();
- toast('已登记 '+hm(start)+'–'+hm(start+p.duration)+'，新增实际工时 '+fmt(result.addedMinutes)+(result.completed?'，任务已完成':'，任务完成状态保留')+(result.alreadyRecordedMinutes?'，已有同任务记录 '+fmt(result.alreadyRecordedMinutes)+' 未重复计入':''))
+ toast(target?'已将计划关联到 '+hm(targetStart)+'–'+hm(targetEnd)+' 的实际工作块（'+zones[result.state].name+'），沿用 '+fmt(result.actualMinutes)+'，未重复计时'+(result.completed?'；任务已完成':'；任务状态不变')+'。可继续拖动右侧工作块微调位置。':'已登记 '+hm(start)+'–'+hm(start+p.duration)+'，新增实际工时 '+fmt(result.addedMinutes)+(result.completed?'，任务已完成':'，任务完成状态保留')+(result.alreadyRecordedMinutes?'，已有同任务记录 '+fmt(result.alreadyRecordedMinutes)+' 未重复计入':''))
 }
 
 function assignPlanToExistingActualDraft(base,planId,date,start,end,clock){
