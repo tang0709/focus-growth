@@ -964,9 +964,23 @@ function assignPlanToExistingActualDraft(base,planId,date,start,end,clock){
  return {next,addedMinutes:0,assignedMinutes:assigned,actualMinutes:end-start,completed,state,reassigned:!!prior,detachedMinutes:sumActivity(previous)};
 }
 
+function actualEditFutureError(date,originalEnd,nextEnd,clock){
+ if(!(clock instanceof Date)||!Number.isFinite(clock.getTime()))return '当前时间无效，请重试';
+ const todayKey=dateKey(clock);
+ if(date>todayKey)return '不能编辑未来日期的实际工作记录';
+ // An input-backed ten-minute slot can end after the present minute.
+ // A manual edit may retain or shorten that pre-existing tail, but must not
+ // create additional future minutes beyond the original record.
+ if(date===todayKey){
+  const nowMinute=clock.getHours()*60+clock.getMinutes();
+  if(nextEnd>nowMinute&&nextEnd>originalEnd)return '不能新增未来时间；可以提前移动、缩短或修改已有记录';
+ }
+ return null
+}
 function editActualIntervalDraft(base,date,start,end,nextStart,nextEnd,clock,changeTaskId,changeState){
  if(![start,end,nextStart,nextEnd].every(Number.isInteger)||start<0||end>1440||start>=end||nextStart<0||nextEnd>1440||nextStart>=nextEnd)return {error:'起止时间无效'};
- if(date>dateKey(clock)||(date===dateKey(clock)&&nextEnd>clock.getHours()*60+clock.getMinutes()))return {error:'实际工作时段不能延伸到未来'};
+ const futureError=actualEditFutureError(date,end,nextEnd,clock);
+ if(futureError)return {error:futureError};
  const rows=base.activity.filter(a=>a.date===date&&activityStart(a)>=start&&activityEnd(a)<=end).sort((a,b)=>activityStart(a)-activityStart(b));
  if(!rows.length||activityStart(rows[0])!==start||activityEnd(rows[rows.length-1])!==end)return {error:'原始记录已变化，请刷新后重试'};
  let pos=start;for(const a of rows){if(activityStart(a)!==pos)return {error:'工作块不连续'};pos=activityEnd(a)}
