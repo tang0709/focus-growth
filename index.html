@@ -578,7 +578,7 @@ function beginActualMove(e,lane,block){
   if(result.error){renderCenter();toast(result.error);return}
   const error=validate(result.next);if(error){renderCenter();toast('未修改：'+error);return}
   try{window.FocusGrowthStorageGuard?.before()}catch{renderCenter();toast('本地数据已变化，请刷新再试');return}
-  db=result.next;render();
+  db=result.next;render();window.FocusGrowthNotifyTaskChange?.();
   toast('已调整实际工作为 '+hm(lastStart)+'–'+hm(lastEnd)+'，'+fmt(result.minutes)+'；任务和工作状态保持不变')
  }
  function cancel(ev){
