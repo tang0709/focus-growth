@@ -209,18 +209,27 @@ function timerDayRanges(startMs,endMs){
 }
 function recordTimerInterval(base,id,startMs,endMs,state='unknown',source='task-timer'){
  const t=base.tasks.find(t=>t.id===id),ranges=timerDayRanges(startMs,endMs);
- if(!t||!ranges.length)return {added:0,conflicts:0};
+ if(!t||!ranges.length)return {added:0,conflicts:0,verifiedMinutes:0};
  const before=sumActivity(base.activity.filter(a=>a.taskId===id));let conflicts=0;
+ const evidenceSources=new Set(['desktop-input','work-session-input','browser']);
  for(const {date,start,end} of ranges){
   const occupied=base.activity.filter(a=>a.date===date&&a.taskId&&a.taskId!==id&&activityStart(a)<end&&activityEnd(a)>start).sort((a,b)=>activityStart(a)-activityStart(b));
   let cursor=start;const free=[];
   for(const a of occupied){const l=Math.max(start,activityStart(a)),r=Math.min(end,activityEnd(a));if(l>cursor)free.push([cursor,l]);conflicts+=Math.max(0,r-Math.max(cursor,l));cursor=Math.max(cursor,r)}
   if(cursor<end)free.push([cursor,end]);
-  for(const [l,r] of free)fillCompletionActivity(base,id,date,l,r,source,state);
+  for(const [l,r] of free){
+   if(source==='task-timer'){
+    const evidence=base.activity.filter(a=>a.date===date&&evidenceSources.has(a.source)&&(a.taskId===null||a.taskId===id)&&activityEnd(a)>l&&activityStart(a)<r);
+    for(const a of evidence){
+     const lo=Math.max(l,activityStart(a)),hi=Math.min(r,activityEnd(a));
+     if(hi>lo&&a.taskId===null)fillCompletionActivity(base,id,date,lo,hi,a.source,a.state);
+    }
+   }else fillCompletionActivity(base,id,date,l,r,source,state); // Explicitly user-confirmed historical repair only.
+  }
  }
  const total=sumActivity(base.activity.filter(a=>a.taskId===id));
  if(total>0)t.actual=Math.max(Number.isFinite(t.actual)?t.actual:0,total);
- return {added:Math.max(0,total-before),conflicts}
+ return {added:Math.max(0,total-before),conflicts,verifiedMinutes:total};
 }
 function timerSettlementDraft(base,now,outcome){
  const r=base.taskTimer;if(!r)return null;
@@ -243,7 +252,7 @@ function settleTaskTimer(now=Date.now(),outcome='ended'){
 function beginTaskTimer(id){let t=task(id);if(!t||t.done)return false;try{window.FocusGrowthStorageGuard?.before()}catch{toast('页面数据已变化，请刷新重试');return false}if(db.taskTimer?.taskId!==id){let now=Date.now();if(settleTaskTimer(now,'switched')===false)return false;db.taskTimer={taskId:id,startedAt:now,state:db.state||'unknown'}}db.currentTask=id;day=today();view='day';save();return true}
 function revealTaskTimerRecord(now){const axis=$('axiswrap'),t=new Date(now);if(axis)axis.scrollTop=Math.max(0,(t.getHours()*60+t.getMinutes()-120)*SCALE)}
 function pauseTaskTimer(){const r=settleTaskTimer(Date.now(),'paused');if(r===false)return;render();toast('已暂停并保存实际记录'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))}
-function stopTaskTimer(){const now=Date.now(),r=settleTaskTimer(now,'ended');if(r===false)return;db.currentTask=null;if(r.added){day=dateKey(new Date(now));view='day';mode='compare'}render();if(r.added)revealTaskTimerRecord(now);toast('任务计时已结束，已保存 '+r.added+' 分钟新增实际工时；未自动标记完成'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))}
+function stopTaskTimer(){const now=Date.now(),r=settleTaskTimer(now,'ended');if(r===false)return;db.currentTask=null;if(r.added){day=dateKey(new Date(now));view='day';mode='compare'}render();if(r.added)revealTaskTimerRecord(now);toast('任务计时已结束，键鼠证据支持 '+r.verifiedMinutes+' 分钟实际工时；未自动标记完成'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))}
 
 function recoverOldTimer(){
  const candidates=db.tasks.filter(t=>Number.isFinite(t.timerMs)&&t.timerMs>0).sort((a,b)=>b.timerMs-a.timerMs);
@@ -259,7 +268,7 @@ function saveRecoveredTimer(){
  const err=validate(next);if(err)return toast('未补录：'+err);db=next;day=dateKey(new Date(start));view='day';mode='compare';closeModal();render();toast('已补录 '+r.added+' 分钟；累计秒级计时不重复增加'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))
 }
 function clockText(ms){let n=Math.floor(ms/1000);return pad(Math.floor(n/3600))+':'+pad(Math.floor(n/60)%60)+':'+pad(n%60)}
-function renderTaskTimer(){let t=task(db.currentTask),running=!!t&&db.taskTimer?.taskId===t.id;let html=t?`<div class="tasktimer"><div class="timerinfo"><small>当前任务 · ${running?'计时中':'已暂停 / 未开始'}</small><b>${esc(t.name)}</b><small>累计任务计时 · 暂停或结束时保存实际记录</small></div><span class="timerdigits" id="mainClock">${clockText(elapsedTaskMs(t.id))}</span><div class="timercontrols"><button class="small primary" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ 暂停':'▷ 继续'}</button><button class="small" onclick="stopTaskTimer()" title="保存本次工时，任务仍可继续">■ 结束（未完成）</button><button class="small" onclick="completeTask(db.currentTask,true)" title="保存本次工时并标记任务完成">✓ 完成</button></div></div>`:`<div class="tasktimer timeridle"><div class="timerinfo"><small>实时任务计时</small><b>选择任务旁的 ▷ 即可开始</b></div><span class="timerdigits">00:00:00</span><button class="small" onclick="recoverOldTimer()">补录旧计时</button></div>`;$('taskTimerPanel').innerHTML=workClockHTML()+html;$('footerTimer').innerHTML=(validWorkSession(db.workSession)?`<span class="work-foot"><span id="footWorkClock" class="footclock">${clockText(sessionVerifiedMinutes(db.workSession)*60000)}</span> <button class="small" title="结束独立工作计时" onclick="stopWorkSession()">■ 工作</button></span> `:'')+(t?`<span class="footclock" id="footClock">${clockText(elapsedTaskMs(t.id))}</span> <button class="small" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ':'▷'}</button> <button class="small" onclick="stopTaskTimer()">■</button>`:'')}
+function renderTaskTimer(){let t=task(db.currentTask),running=!!t&&db.taskTimer?.taskId===t.id;let html=t?`<div class="tasktimer"><div class="timerinfo"><small>当前任务 · ${running?'计时中':'已暂停 / 未开始'}</small><b>${esc(t.name)}</b><small>秒级计时仅作参考；实际工时以键鼠活动为准</small></div><span class="timerdigits" id="mainClock">${clockText(elapsedTaskMs(t.id))}</span><div class="timercontrols"><button class="small primary" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ 暂停':'▷ 继续'}</button><button class="small" onclick="stopTaskTimer()" title="保存本次工时，任务仍可继续">■ 结束（未完成）</button><button class="small" onclick="completeTask(db.currentTask,true)" title="保存本次工时并标记任务完成">✓ 完成</button></div></div>`:`<div class="tasktimer timeridle"><div class="timerinfo"><small>实时任务计时</small><b>选择任务旁的 ▷ 即可开始</b></div><span class="timerdigits">00:00:00</span><button class="small" onclick="recoverOldTimer()">补录旧计时</button></div>`;$('taskTimerPanel').innerHTML=workClockHTML()+html;$('footerTimer').innerHTML=(validWorkSession(db.workSession)?`<span class="work-foot"><span id="footWorkClock" class="footclock">${clockText(sessionVerifiedMinutes(db.workSession)*60000)}</span> <button class="small" title="结束独立工作计时" onclick="stopWorkSession()">■ 工作</button></span> `:'')+(t?`<span class="footclock" id="footClock">${clockText(elapsedTaskMs(t.id))}</span> <button class="small" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ':'▷'}</button> <button class="small" onclick="stopTaskTimer()">■</button>`:'')}
 function tickTaskTimer(){tickWorkSession();let t=task(db.currentTask);if(!t)return;let v=clockText(elapsedTaskMs(t.id));for(let id of ['mainClock','footClock']){let el=$(id);if(el&&el.textContent!==v)el.textContent=v}}
 
 function completionClock(t){const n=Date.parse(t?.completedAt||'');return Number.isFinite(n)?new Date(n):null}
@@ -554,7 +563,7 @@ function saveCompletedPlansActivity(){
 function putActivity(r){db.activity=db.activity.filter(x=>!(x.date===r.date&&x.slot===r.slot));db.activity.push(r)}function saveManual(){let d=val('ad'),a=min(val('as')),b=min(val('ae'));if(!d||!Number.isFinite(a)||!Number.isFinite(b)||a>=b)return toast('请填写有效时间，跨日请分开补录');for(let i=Math.floor(a/10);i<Math.ceil(b/10);i++)putActivity({date:d,slot:i,state:val('az'),taskId:val('at')||null,source:'manual'});closeModal();render()}
 function assignActivity(d,a,b){let rec=db.activity.find(x=>x.date===d&&activityStart(x)===a);modal('调整实际工作记录',`<p>${esc(d)} · ${hm(a)}–${hm(b)}</p>`+field('关联任务',select('assignT',taskOptions(rec?.taskId,true)))+field('状态',select('assignZ',Object.keys(zones).map(k=>option(k,zones[k].name,rec?.state||'unknown')).join('')))+actions(`saveAssignment('${d}',${a},${b})`,`<button class="danger" onclick="deleteActivity('${d}',${a},${b})">删除此记录</button>`))}function saveAssignment(d,a,b){for(let x of db.activity)if(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b){x.taskId=val('assignT')||null;x.state=val('assignZ')}closeModal();render()}function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
 function browserActivity(e){
- if(!e?.isTrusted||document.visibilityState!=='visible'||(!validWorkSession(db.workSession)&&!db.recordBrowser))return;
+ if(!e?.isTrusted||document.visibilityState!=='visible'||(!validWorkSession(db.workSession)&&!db.taskTimer&&!db.recordBrowser))return;
  const n=new Date(),d=dateKey(n),slot=Math.floor((n.getHours()*60+n.getMinutes())/10),key=d+':'+slot;
  lastVerifiedInputMs=n.getTime();
  if(db.activity.some(a=>a.date===d&&activityStart(a)<(slot+1)*10&&activityEnd(a)>slot*10))return;
