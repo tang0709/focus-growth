@@ -949,8 +949,8 @@ function assignActivity(d,a,b){
  html+=field('关联任务',select('assignT',taskOptions(rec?.taskId,true)));
  html+=field('状态',select('assignZ',Object.keys(zones).map(k=>option(k,zones[k].name,rec?.state||'unknown')).join('')));
  html+='<div class="notice">拖动工作块可移动位置，拖动上下边缘可修改时长。默认按5分钟吸附，按 Alt 精确到1分钟；按 Shift 拖动可框选多段。</div>';
- const action='saveAssignment('+JSON.stringify(d)+','+a+','+b+')';
- const remove='<button id="actualDeleteButton" type="button" class="danger" onclick="deleteActivity('+JSON.stringify(d)+','+a+','+b+')">删除此记录</button>';
+ const action='saveAssignment('+esc(JSON.stringify(d))+','+a+','+b+')';
+ const remove='<button id="actualDeleteButton" type="button" class="danger" onclick="deleteActivity('+esc(JSON.stringify(d))+','+a+','+b+')">删除此记录</button>';
  modal('调整实际工作记录',html+actions(action,remove))
 }
 function actualEditError(message){
