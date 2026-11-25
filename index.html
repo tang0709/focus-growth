@@ -697,7 +697,7 @@ function assignPlanToExistingActualDraft(base,planId,date,start,end,clock){
  const allDone=plans.length>0&&plans.every(p=>next.history.some(h=>h.type==='plan-drag-actual'&&h.planId===p.id)||activityCoversPlan(next,p));
  let completed=false;
  if(allDone&&!next.tasks.some(c=>c.parentId===t.id&&!c.done)&&next.taskTimer?.taskId!==t.id&&!t.done){t.done=true;t.completedAt=clock.toISOString();completed=true;if(next.currentTask===t.id)next.currentTask=null}
- const total=sumActivity(next.activity.filter(a=>a.taskId===t.id));if(total>0)t.actual=Math.max(Number.isFinite(t.actual)?t.actual:0,total);
+ const total=sumActivity(next.activity.filter(a=>a.taskId===t.id));t.actual=total;
  return {next,addedMinutes:0,assignedMinutes:assigned,actualMinutes:end-start,completed,state};
 }
 
@@ -729,8 +729,8 @@ function editActualIntervalDraft(base,date,start,end,nextStart,nextEnd,clock,cha
  const affected=new Set([...rows.map(a=>a.taskId).filter(Boolean),taskId].filter(Boolean));
  for(const id of affected){
   const t=next.tasks.find(t=>t.id===id);if(!t)continue;
-  const before=sumActivity(base.activity.filter(a=>a.taskId===id)),after=sumActivity(next.activity.filter(a=>a.taskId===id)),previous=Number.isFinite(t.actual)?t.actual:0;
-  t.actual=Math.max(0,after,previous+after-before);
+  const after=sumActivity(next.activity.filter(a=>a.taskId===id));
+  t.actual=after;
  }
  return {next,minutes:nextEnd-nextStart,taskId,state};
 }
