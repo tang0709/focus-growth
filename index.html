@@ -55,11 +55,12 @@ async function stopWorkSession(){
  let draft;const now=Date.now(),start=db.workSession.startedAt;
  try{window.FocusGrowthStorageGuard?.before();draft=workSessionDraft(db,now,true)}catch(e){if(e.message!=='work_session_gap_too_long')return toast('页面数据已变化，请刷新后再结束');if(!confirm('未保存的计时跨度超过31天。是否结束计时，仅保留已有活动块？'))return;draft={next:{...clone(db),workSession:null},added:0}}
  if(!draft)return toast('系统时间早于计时开始时间，请检查时钟');
- const used=clockText(now-start),verified=sumActivity(draft.next.activity.filter(a=>a.source==='work-session-input'&&a.date>=dateKey(new Date(start))&&a.date<=dateKey(new Date(now))));draft.next.history.push({type:'work-session-stop',time:new Date(now).toISOString(),elapsedMs:Math.max(0,now-start),verifiedActivityMinutes:verified});db=draft.next;lastSlot='';render();toast('监测已结束：经过 '+used+'，有活动记录 '+fmt(verified)+'；活动外时间不计入工时')
+ const used=clockText(now-start),verified=sessionVerifiedMinutes(db.workSession);draft.next.history.push({type:'work-session-stop',time:new Date(now).toISOString(),elapsedMs:Math.max(0,now-start),verifiedActivityMinutes:verified});db=draft.next;lastSlot='';render();toast('监测已结束：经过 '+used+'，有活动记录 '+fmt(verified)+'；活动外时间不计入工时')
 }
+function sessionVerifiedMinutes(w){return w?sumActivity(db.activity.filter(a=>a.sessionStartedAt===w.startedAt&&['work-session-input','desktop-input'].includes(a.source))):0}
 function workClockHTML(){
- const w=validWorkSession(db.workSession)?db.workSession:null,elapsed=clockText(w?Math.max(0,Date.now()-w.startedAt):0);
- return `<div class="work-session-bar${w?' work-session-active':''}"><div><b>独立工作计时</b><small>${w?'已开启活动检测 · 可稍后分配任务':'无需先选任务；仅有键鼠输入证据的时间块计入'}</small></div><span class="work-session-clock" id="workClock">${elapsed}</span><button class="small ${w?'':'primary'}" onclick="${w?'stopWorkSession()':'startWork()'}">${w?'■ 结束工作':'▷ 开始工作'}</button></div>`
+ const w=validWorkSession(db.workSession)?db.workSession:null,elapsed=clockText(sessionVerifiedMinutes(w)*60000);
+ return `<div class="work-session-bar${w?' work-session-active':''}"><div><b>键鼠活动工作监测</b><small>${w?'已开启活动检测 · 可稍后分配任务':'无需先选任务；仅有键鼠输入证据的时间块计入'}</small></div><span class="work-session-clock" id="workClock">${elapsed}</span><button class="small ${w?'':'primary'}" onclick="${w?'stopWorkSession()':'startWork()'}">${w?'■ 结束工作':'▷ 开始工作'}</button></div>`
 }
 function liveWorkPreviewHTML(date,now=Date.now()){
  const w=db.workSession;if(!validWorkSession(w))return '';
@@ -74,7 +75,7 @@ function liveWorkPreviewHTML(date,now=Date.now()){
 let workSessionWarning=false,workLaneNeedsRefresh=false,lastVerifiedInputMs=0;
 function tickWorkSession(){
  const w=db.workSession;if(!validWorkSession(w))return;
- const now=Date.now(),elapsed=clockText(Math.max(0,now-w.startedAt));
+ const now=Date.now(),elapsed=clockText(sessionVerifiedMinutes(w)*60000);
  for(let id of ['workClock','footWorkClock']){const el=$(id);if(el&&el.textContent!==elapsed)el.textContent=elapsed}
  try{
   const draft=workSessionDraft(db,now,false);
@@ -258,7 +259,7 @@ function saveRecoveredTimer(){
  const err=validate(next);if(err)return toast('未补录：'+err);db=next;day=dateKey(new Date(start));view='day';mode='compare';closeModal();render();toast('已补录 '+r.added+' 分钟；累计秒级计时不重复增加'+(r.conflicts?'；保留其他任务 '+r.conflicts+' 分钟':''))
 }
 function clockText(ms){let n=Math.floor(ms/1000);return pad(Math.floor(n/3600))+':'+pad(Math.floor(n/60)%60)+':'+pad(n%60)}
-function renderTaskTimer(){let t=task(db.currentTask),running=!!t&&db.taskTimer?.taskId===t.id;let html=t?`<div class="tasktimer"><div class="timerinfo"><small>当前任务 · ${running?'计时中':'已暂停 / 未开始'}</small><b>${esc(t.name)}</b><small>累计任务计时 · 暂停或结束时保存实际记录</small></div><span class="timerdigits" id="mainClock">${clockText(elapsedTaskMs(t.id))}</span><div class="timercontrols"><button class="small primary" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ 暂停':'▷ 继续'}</button><button class="small" onclick="stopTaskTimer()" title="保存本次工时，任务仍可继续">■ 结束（未完成）</button><button class="small" onclick="completeTask(db.currentTask,true)" title="保存本次工时并标记任务完成">✓ 完成</button></div></div>`:`<div class="tasktimer timeridle"><div class="timerinfo"><small>实时任务计时</small><b>选择任务旁的 ▷ 即可开始</b></div><span class="timerdigits">00:00:00</span><button class="small" onclick="recoverOldTimer()">补录旧计时</button></div>`;$('taskTimerPanel').innerHTML=workClockHTML()+html;$('footerTimer').innerHTML=(validWorkSession(db.workSession)?`<span class="work-foot"><span id="footWorkClock" class="footclock">${clockText(Math.max(0,Date.now()-db.workSession.startedAt))}</span> <button class="small" title="结束独立工作计时" onclick="stopWorkSession()">■ 工作</button></span> `:'')+(t?`<span class="footclock" id="footClock">${clockText(elapsedTaskMs(t.id))}</span> <button class="small" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ':'▷'}</button> <button class="small" onclick="stopTaskTimer()">■</button>`:'')}
+function renderTaskTimer(){let t=task(db.currentTask),running=!!t&&db.taskTimer?.taskId===t.id;let html=t?`<div class="tasktimer"><div class="timerinfo"><small>当前任务 · ${running?'计时中':'已暂停 / 未开始'}</small><b>${esc(t.name)}</b><small>累计任务计时 · 暂停或结束时保存实际记录</small></div><span class="timerdigits" id="mainClock">${clockText(elapsedTaskMs(t.id))}</span><div class="timercontrols"><button class="small primary" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ 暂停':'▷ 继续'}</button><button class="small" onclick="stopTaskTimer()" title="保存本次工时，任务仍可继续">■ 结束（未完成）</button><button class="small" onclick="completeTask(db.currentTask,true)" title="保存本次工时并标记任务完成">✓ 完成</button></div></div>`:`<div class="tasktimer timeridle"><div class="timerinfo"><small>实时任务计时</small><b>选择任务旁的 ▷ 即可开始</b></div><span class="timerdigits">00:00:00</span><button class="small" onclick="recoverOldTimer()">补录旧计时</button></div>`;$('taskTimerPanel').innerHTML=workClockHTML()+html;$('footerTimer').innerHTML=(validWorkSession(db.workSession)?`<span class="work-foot"><span id="footWorkClock" class="footclock">${clockText(sessionVerifiedMinutes(db.workSession)*60000)}</span> <button class="small" title="结束独立工作计时" onclick="stopWorkSession()">■ 工作</button></span> `:'')+(t?`<span class="footclock" id="footClock">${clockText(elapsedTaskMs(t.id))}</span> <button class="small" onclick="${running?'pauseTaskTimer()':'setCurrent(db.currentTask)'}">${running?'Ⅱ':'▷'}</button> <button class="small" onclick="stopTaskTimer()">■</button>`:'')}
 function tickTaskTimer(){tickWorkSession();let t=task(db.currentTask);if(!t)return;let v=clockText(elapsedTaskMs(t.id));for(let id of ['mainClock','footClock']){let el=$(id);if(el&&el.textContent!==v)el.textContent=v}}
 
 function completionClock(t){const n=Date.parse(t?.completedAt||'');return Number.isFinite(n)?new Date(n):null}
@@ -559,7 +560,7 @@ function browserActivity(e){
  if(db.activity.some(a=>a.date===d&&activityStart(a)<(slot+1)*10&&activityEnd(a)>slot*10))return;
  if(lastSlot===key)return;
  try{window.FocusGrowthStorageGuard?.before()}catch{return}
- db.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||(!db.workSession?db.currentTask:null)||null,source:validWorkSession(db.workSession)?'work-session-input':'browser'});
+ db.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||(!db.workSession?db.currentTask:null)||null,source:validWorkSession(db.workSession)?'work-session-input':'browser',...(validWorkSession(db.workSession)?{sessionStartedAt:db.workSession.startedAt}:{})});
  lastSlot=key;save();renderMetrics();renderFooter();
  if(page==='work'&&view==='day'&&!actualSelectionDrag&&!planSelectionDrag)renderCenter()
 }
