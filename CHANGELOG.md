@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4 — Ctrl+Z undo and redo
+- Add Ctrl+Z (Cmd+Z on macOS) to undo the most recent explicit workspace edit, with a bounded stack of up to 20 operations. Add Ctrl+Y / Ctrl+Shift+Z for redo and visible Undo/Redo controls in the day timeline. Preserve native text-field undo while a form input or editable control has focus.
+- Capture user actions before pointer or keyboard activation and commit a history entry only after the revised state is saved. Covered collections include tasks, projects, plans, actual activity, notes, goals, theme, quadrants and archived-task visibility. The undo record stays in this browser tab memory rather than introducing another persistent copy of private records.
+- Never treat passively collected browser or desktop input activity as a manual undo step. Do not rewind running timers or monitor sessions. Restore only the collections changed by the manual action, validate before applying and verify local persistence; stop instead of silently overwriting unexpected state.
+- Clear stale undo history when remote task sync applies a differing state. Prevent undo/redo from removing a previously synced or in-flight project, task or plan when it would violate the continuous sync no-deletion rule. Notify the existing scoped sync mechanism for supported task/project/plan reversals. Raw activity remains browser-local.
+- Include archive and restore actions in manual undo history; user action checkpoints also cover plan repositioning, actual record editing and deletion. A refresh resets the in-memory undo stack. Source parsing and isolated history, 20-step bound, stale-data, archive, timer safety, original-deletion-restoration, redo and plan-move simulations passed. Live browser acceptance remains pending.
+
 ## V0.4 — Actual record delete and edit button repair
 - Fix actual-work editor Save and Delete buttons whose inline onclick values contained unescaped JSON double quotes, truncating the HTML event handler and making buttons unresponsive. HTML-escape the quoted date argument so the DOM decodes it to an executable JavaScript string.
 - Replace browser-native confirm on record deletion with a visible inline confirmation panel, cancel action, and focus/scroll for accessibility. Do not delete anything on the initial click.
