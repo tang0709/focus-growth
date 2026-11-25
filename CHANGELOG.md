@@ -1,5 +1,11 @@
 # Changelog
 
+## V0.4 — Private retrospective timeline estimates
+- Add a generic, private-data-triggered retrospective estimator for explicitly tagged completed-task plans. The public source never contains personal task names or historical dates; private `sync/state.json` holds the task and plan data.
+- On a verified incoming sync, materialize only tagged plans into browser-local actual timeline records, preserving all existing activity. Use `source=retrospective-estimate`, mark the blocks as approximate with dashed borders, retain either neutral gray or the user-selected focus quadrant, and record idempotent local import history and skipped overlaps.
+- Daily, weekly, monthly and yearly statistics label the portion of total recorded time that is retrospective estimation rather than observed input. No activity details are added to the authorized GitHub sync projection.
+- The user authorized approximating schedule intervals for November 23 and November 24, 2026. Exact hours are illustrative, not independently verified. Existing plans, measured activity, timers and privacy data remain unchanged until the browser reads the new projection. Seven mocked regression checks and JavaScript parse check pass; live browser acceptance pending.
+
 ## V0.4 — Input-backed work accounting and completed visa milestones
 - Mark remaining four PhD visa material tasks complete on the user's approximate 2026-11-24 completion date in the private task repository. Actual work durations and exact completion timestamps remain unasserted. Previous plans remain available for review.
 - Stop recording unattended wall time as work when an independent work session remains active. Record trusted keyboard, pointer-button and wheel activity in ten-minute blocks within the visible webpage; no passive pointer-movement counting or modifier-key-only counting. Clicking dashboard controls is not regarded as work.
