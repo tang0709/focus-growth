@@ -81,7 +81,7 @@
    if(typeof reconcileIncomingCompletions==='function')reconcileIncomingCompletions(db,next);
    if(validate(next))throw Error('incoming_validation_failed');
    if(next.taskTimer&&!next.tasks.some(t=>t.id===next.taskTimer.taskId))throw Error('active_timer_preservation');
-   applying=true;try{db=next;render();}finally{applying=false;}meta.base=copy(remote);persist();return true;
+   applying=true;try{window.FocusGrowthUndo?.invalidate?.();db=next;render();}finally{applying=false;}meta.base=copy(remote);persist();return true;
   }
   status='等待本地编辑稳定';error='变化发生在备份期间，未覆盖本地，稍后重试。';return false;
  }
