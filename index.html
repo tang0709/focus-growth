@@ -190,7 +190,7 @@ function treeHTML(groups,filter){
  const order=orderedProjectIds();
  return orderProjectGroups(groups).map(g=>{
  const html=children(g.id,null,0),p=project(g.id),key=projectGroupKey(g.id),closed=collapsedProjectGroups.has(key);
- if(!html&&!p)return '';
+ if(!html)return '';
  return `<div class="tasktree"><div class="group"><button type="button" class="group-toggle" id="group-toggle-${safeId(key)}" aria-expanded="${!closed}" aria-controls="group-content-${safeId(key)}" title="${p?'单击展开或收起 · 双击名称重命名':(closed?'展开':'收起')+'任务'}" onclick="toggleProjectGroup('${safeId(key)}')" ${p?`ondblclick="if(event.target.closest('.group-name'))editProjectName('${safeId(g.id)}')" onkeydown="if(event.key==='F2'){event.preventDefault();editProjectName('${safeId(g.id)}')}"`:''}><span class="group-arrow" aria-hidden="true" title="${closed?'展开':'收起'}项目">${closed?'▸':'▾'}</span><span class="group-name">${esc(g.name)}</span></button>${p?`<small>${progress(p).k}/${progress(p).n}</small>`:''}${p?projectOrderControls(g.id,order):''}<button type="button" class="project-add-btn" title="新增任务" aria-label="新增任务" onclick="editTask(null,${g.id?"'"+safeId(g.id)+"'":"null"})">＋</button></div><div id="group-content-${safeId(key)}"${closed?' hidden':''}>${html||'<div class="empty">暂无未归档任务</div>'}</div></div>`
  }).join('')||'<div class="empty">添加第一个任务</div>'
 }
