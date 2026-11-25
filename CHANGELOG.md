@@ -1,5 +1,10 @@
 # Changelog
 
+## V0.4 — Smooth seconds on work monitor
+- Show the running work monitor's elapsed session time in HH:MM:SS with second-by-second ticks instead of a clock frozen on ten-minute work-credit increments.
+- Display valid input-backed activity time separately as ten-minute credited blocks. Unobserved periods never create activity records, even though the wall-clock monitor continues running.
+- Preserve existing browser-local work history, authorized sync scope, task-timer behavior, and desktop activity collection. JavaScript syntax and eight isolated clock/accounting checks passed; live browser acceptance pending.
+
 ## V0.4 — Hide empty task groups
 - Hide project and independent-task headers whenever the current task tree contains no visible descendants, including after all child tasks have been archived or filtered out by search. Collapsed project headings remain visible if any matching, unarchived child exists. No tasks, archives, projects, timers, or sync records are deleted.
 - JavaScript syntax and eight isolated task-tree regression checks pass. Live browser acceptance remains pending.
