@@ -89,7 +89,7 @@ function tickWorkSession(){
   workSessionWarning=false;
  }catch(e){if(!workSessionWarning){workSessionWarning=true;toast(e.message==='work_session_gap_too_long'?'计时时间跨度过长，请检查后手动结束':'工作记录暂无法保存，请检查同步或刷新')}}
  const lane=document.querySelector('.lane[data-actual-lane]'),preview=$('liveWorkPreview');
- if(lane&&!actualSelectionDrag&&workLaneNeedsRefresh){lane.innerHTML=actualBlocks(day);workLaneNeedsRefresh=false}
+ if(lane&&!actualSelectionDrag&&!actualTimelineGesture&&workLaneNeedsRefresh){lane.innerHTML=actualBlocks(day);workLaneNeedsRefresh=false}
  else if(preview&&!actualSelectionDrag)preview.innerHTML=liveWorkPreviewHTML(day,now)
 }
 
@@ -543,6 +543,7 @@ function cancelActualSelection(){
  try{if(d.lane.hasPointerCapture?.(d.pointer))d.lane.releasePointerCapture(d.pointer)}catch{}
 }
 
+let actualTimelineGesture=false;
 function beginActualMove(e,lane,block){
  const date=day,start=Number(block.dataset.actualStart),end=Number(block.dataset.actualEnd);
  if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start)return;
@@ -550,11 +551,12 @@ function beginActualMove(e,lane,block){
  const kind=edge==='start'||edge==='end'?edge:'move';
  const scroller=$('axiswrap'),scrollStart=scroller?.scrollTop||0,y=e.clientY,pointer=e.pointerId;
  let changed=false,lastStart=start,lastEnd=end;
- e.preventDefault();try{lane.setPointerCapture(pointer)}catch{}
+ actualTimelineGesture=true;e.preventDefault();e.stopPropagation();try{block.setPointerCapture?.(pointer)}catch{}
  function cleanup(){
+  actualTimelineGesture=false;
   window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);
   window.removeEventListener('pointercancel',cancel);window.removeEventListener('blur',cancel);
-  try{if(lane.hasPointerCapture?.(pointer))lane.releasePointerCapture(pointer)}catch{}
+  try{if(block.hasPointerCapture?.(pointer))block.releasePointerCapture(pointer)}catch{}
   block.classList.remove('actual-moving');
  }
  function move(ev){
@@ -979,7 +981,7 @@ function browserActivity(e){
  try{window.FocusGrowthStorageGuard?.before()}catch{return}
  db.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||(!db.workSession?db.currentTask:null)||null,source:validWorkSession(db.workSession)?'work-session-input':'browser',...(validWorkSession(db.workSession)?{sessionStartedAt:db.workSession.startedAt}:{})});
  lastSlot=key;save();renderMetrics();renderFooter();
- if(page==='work'&&view==='day'&&!actualSelectionDrag&&!planSelectionDrag)renderCenter()
+ if(page==='work'&&view==='day'&&!actualSelectionDrag&&!planSelectionDrag&&!actualTimelineGesture)renderCenter()
 }
 for(const type of ['keydown','pointerdown','wheel'])document.addEventListener(type,browserActivity,{passive:true});
 function openWidget(i){let z=db.state,w=db.widgets[z]?.[i];if(!w)return;db.history.push({type:'widget',state:z,widget:w[0],time:new Date().toISOString()});save();let name=w[0];if(name.includes('倾倒')||name.includes('寄存')){modal(name,`<p class="muted">先把脑子里的内容放到这里，无需立刻处理。</p>${field('想法',`<textarea id="noteText" rows="7" placeholder="每行一个想法，或者自由书写"></textarea>`)}<div class="actions"><button onclick="closeModal()">取消</button><button onclick="saveNote(false)">寄存</button><button class="primary" onclick="saveNote(true)">保存并选择一件任务</button></div>`);return}if(name.includes('休息')){modal(name,`<p>不必强迫自己工作。按自己的节奏休息。</p><div style="font-size:36px;text-align:center;padding:20px" id="restTime">00:00</div><div class="actions"><button onclick="closeModal()">结束休息</button></div>`);let start=Date.now(),timer=setInterval(()=>{if(!$('restTime')){clearInterval(timer);return}let s=Math.floor((Date.now()-start)/1000);$('restTime').textContent=pad(Math.floor(s/60))+':'+pad(s%60)},1000);return}if(name.includes('最小行动')){modal(name,field('选择任务',select('wt',taskOptions(db.currentTask)))+field('先做哪一个最小动作？',`<textarea id="wa" rows="3" placeholder="例如：打开文件，读一句话，写一个标题"></textarea>`)+`<p class="muted">这是一条临时启动行动，不会自动创建正式任务。</p><div class="actions"><button onclick="openSync()">通过对话生成建议</button><button class="primary" onclick="if(val('wt'))db.currentTask=val('wt');db.notes.push({text:val('wa'),type:'micro',time:new Date().toISOString()});closeModal();startWork(true)">开始这个动作</button></div>`);return}if(name.includes('直接')||name.includes('沉浸')||name.includes('继续')){closeModal();startWork(name.includes('继续'));return}let a=activeTasks();if(name.includes('随机')&&a.length)a=[a[Math.floor(Math.random()*a.length)]];else if(name.includes('快速')||name.includes('低负担'))a=[...a].sort((x,y)=>x.estimate-y.estimate).slice(0,5);else if(name.includes('核心'))a=[...a].sort((x,y)=>Number(y.priority==='重要且紧急')-Number(x.priority==='重要且紧急'));modal(name,`<p class="muted">${esc(w[1])}。由你决定从哪项任务开始。</p>${a.map(t=>`<div class="taskrow"><span class="name">${esc(t.name)}</span><small>${t.estimate}m</small><button class="small" onclick="db.currentTask='${safeId(t.id)}';closeModal();startWork(true)">开始</button></div>`).join('')||'<div class="empty">暂无可执行任务。可先创建一个任务。</div>'}<div class="actions"><button onclick="editTask()">新建任务</button><button onclick="closeModal()">关闭</button></div>`)}function saveNote(pick){let s=val('noteText').trim();if(s)db.notes.push({text:s,type:'idea',time:new Date().toISOString()});save();closeModal();if(pick){let i=db.widgets[db.state].findIndex(w=>w[0].includes('选择器'));if(i>=0)openWidget(i)}}function editWidgets(){if(!db.state)return toast('先选择一个象限');let s=db.state;modal('组件设置 · '+zones[s].name,`<p class="muted">每行一个组件，格式：名称 | 描述。顺序即显示顺序。</p><textarea id="widgetEdit" rows="9">${esc(db.widgets[s].map(x=>x.join(' | ')).join('\n'))}</textarea>`+actions(`saveWidgets('${s}')`,`<button onclick="$('widgetEdit').value=defaults['${s}'].map(x=>x.join(' | ')).join('\\n')">恢复默认</button>`))}
