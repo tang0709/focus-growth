@@ -540,10 +540,59 @@ function cancelActualSelection(){
  d.scrollEl?.removeEventListener('scroll',d.scroll);
  try{if(d.lane.hasPointerCapture?.(d.pointer))d.lane.releasePointerCapture(d.pointer)}catch{}
 }
+
+function beginActualMove(e,lane,block){
+ const date=day,start=Number(block.dataset.actualStart),end=Number(block.dataset.actualEnd);
+ if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start)return;
+ const edge=e.target.closest('[data-actual-edge]')?.dataset.actualEdge;
+ const kind=edge==='start'||edge==='end'?edge:'move';
+ const scroller=$('axiswrap'),scrollStart=scroller?.scrollTop||0,y=e.clientY,pointer=e.pointerId;
+ let changed=false,lastStart=start,lastEnd=end;
+ e.preventDefault();try{lane.setPointerCapture(pointer)}catch{}
+ function cleanup(){
+  window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);
+  window.removeEventListener('pointercancel',cancel);window.removeEventListener('blur',cancel);
+  try{if(lane.hasPointerCapture?.(pointer))lane.releasePointerCapture(pointer)}catch{}
+  block.classList.remove('actual-moving');
+ }
+ function move(ev){
+  if(ev.pointerId!==pointer)return;
+  const distance=ev.clientY-y+((scroller?.scrollTop||0)-scrollStart);
+  if(!changed&&Math.abs(distance)<5)return;
+  changed=true;
+  const quantum=ev.altKey?1:5,delta=Math.round((distance/SCALE)/quantum)*quantum;
+  if(kind==='move'){
+   lastStart=Math.max(0,Math.min(1440-(end-start),start+delta));
+   lastEnd=lastStart+(end-start);
+  }else if(kind==='start'){lastStart=Math.max(0,Math.min(end-1,start+delta));lastEnd=end}
+  else{lastStart=start;lastEnd=Math.max(start+1,Math.min(1440,end+delta))}
+  block.classList.add('actual-moving');block.style.top=lastStart*SCALE+'px';block.style.height=(lastEnd-lastStart)*SCALE+'px';
+  ev.preventDefault()
+ }
+ function finish(ev){
+  if(ev.pointerId!==pointer)return;
+  cleanup();
+  if(day!==date)return;
+  if(!changed){if(kind==='move')assignActivity(date,start,end);return}
+  const result=editActualIntervalDraft(db,date,start,end,lastStart,lastEnd,new Date());
+  if(result.error){renderCenter();toast(result.error);return}
+  const error=validate(result.next);if(error){renderCenter();toast('未修改：'+error);return}
+  try{window.FocusGrowthStorageGuard?.before()}catch{renderCenter();toast('本地数据已变化，请刷新再试');return}
+  db=result.next;render();
+  toast('已调整实际工作为 '+hm(lastStart)+'–'+hm(lastEnd)+'，'+fmt(result.minutes)+'；任务和工作状态保持不变')
+ }
+ function cancel(ev){
+  if(ev.type!=='blur'&&ev.pointerId!==pointer)return;
+  cleanup();if(changed)renderCenter()
+ }
+ window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);
+ window.addEventListener('pointercancel',cancel);window.addEventListener('blur',cancel)
+}
 function beginActualSelection(event,lane){
  if(event.pointerType!=='mouse'||event.button!==0||event.isPrimary===false)return;
  cancelActualSelection();
  const rect=lane.getBoundingClientRect(),block=event.target.closest('[data-actual-start][data-actual-end]');
+ if(block&&!event.shiftKey){beginActualMove(event,lane,block);return}
  const d={lane,date:day,pointer:event.pointerId,x:event.clientX-rect.left,y:event.clientY-rect.top,startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,block,dragging:false,selected:[],box:null,scrollEl:$('axiswrap')};
  actualSelectionDrag=d;event.preventDefault();
  try{lane.setPointerCapture(event.pointerId)}catch{}
