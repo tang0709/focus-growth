@@ -16,6 +16,7 @@
 .block.actual{touch-action:none}.block.actual.actual-moving{outline:2px dashed #536c9a;outline-offset:1px;z-index:9;opacity:.85}.block.actual.manual-adjustment{border:1px dashed #8d93a0}.block.actual .actual-edge{position:absolute;left:24px;right:8px;height:5px;z-index:4;opacity:0;cursor:ns-resize;background:#8c95a5aa;border-radius:3px}.block.actual .actual-edge-start{top:0}.block.actual .actual-edge-end{bottom:0}.block.actual:hover .actual-edge,.block.actual:focus-within .actual-edge{opacity:.9}.block.actual.actual-drop-hover{outline:3px solid var(--accent);outline-offset:-3px}.block.actual.actual-moving .actual-edge{opacity:0}
 .lane[data-plan-lane] .block:not(.actual){touch-action:none;cursor:grab}.lane[data-plan-lane] .block.plan-block-moving{cursor:grabbing;outline:2px dashed #607fbd;z-index:7;user-select:none}.lane[data-plan-lane].plan-select-mode .block{cursor:crosshair}
 .actual-edit-error{margin-top:12px;background:#fff4ed;color:#8c3b29;border:1px solid #e8bba5;white-space:pre-wrap}
+.actual-delete-confirm{padding:14px;margin:12px 0;border:1px solid #e7b4aa;border-radius:10px;background:#fff8f6;color:#79382c}.actual-delete-confirm p{margin:8px 0;font-size:13px;line-height:1.5}.actual-delete-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.actual-delete-confirm button{padding:8px 12px;border-radius:8px}
 </style></head><body><header class="top"><div class="brand"><div class="logo"></div><div><b>专注 · 成长</b><small>先定位此刻，再决定下一步</small></div></div><nav class="nav" id="nav"><button data-page="work" class="active">⌂ 工作台</button><button data-page="projects">▤ 长期任务</button><button data-page="stats">▥ 统计分析</button><button data-page="settings">⚙ 设置</button></nav><div class="tools"><span id="demoBadge" class="pill"></span><button onclick="openSync()">对话更新</button><button onclick="toggleAI()">AI 助手</button></div></header><main class="wrap"><div id="metrics" class="metrics"></div><div class="main" id="work"><aside id="left" class="panel left"><div class="panelhead"><h2>启动状态</h2><button class="small" id="collapse" onclick="toggleLeft()">收起</button></div><div class="leftbody" id="leftbody"></div></aside><section class="panel"><div class="panelhead"><div class="headrow"><h2 id="dateLabel"></h2><button class="small" onclick="shiftDay(-1)">‹</button><button class="small" id="todayButton" onclick="goToday()">今天</button><button class="small" onclick="shiftDay(1)">›</button><input type="date" id="dateInput" style="width:132px;font-size:12px;padding:5px" onchange="setDay(this.value)"></div><div class="seg" id="viewButtons"><button onclick="setView('day')" data-view="day">时间轴</button><button onclick="setView('week')" data-view="week">周</button><button onclick="setView('month')" data-view="month">月</button></div></div><div id="taskTimerPanel"></div><div id="center"></div></section><aside class="panel right" id="right"></aside></div><section class="panel fullview" id="projects"></section><section class="panel fullview" id="stats"></section><section class="panel fullview" id="settings"></section></main><footer class="footer"><div><span class="dot"></span><b id="footerState">未选择状态</b>　<span id="footerTime"></span></div><div id="footerTimer"></div><span class="muted footnotice">原型：仅检测本网页内活动，未接入 Windows 后台监测</span><div><button class="small" onclick="recordManual()">补录工作</button> <button class="small" onclick="openSync()">数据同步</button></div></footer><div id="modalRoot"></div><div id="aiRoot"></div><div id="toastRoot"></div><input type="file" id="importFile" accept=".json,application/json" hidden><script>
 'use strict';
 // Before the sync preview can touch the normal workspace, retain its exact local JSON.
@@ -390,7 +391,7 @@ function recoverRecentCompletionPlan(base){
   const clock=completionClock(t);if(!clock||Date.now()-clock.getTime()>2*86400000||clock.getTime()>Date.now())continue;
   const date=dateKey(clock),end=clock.getHours()*60+clock.getMinutes();
   const p=base.plans.find(p=>p.taskId===t.id&&p.date===date&&p.start+p.duration===end&&p.duration===t.actual);
-  if(!p||base.history.some(h=>h.type==='completion-timeline-recovered'&&h.taskId===t.id&&h.completedAt===t.completedAt))continue;
+  if(!p||base.history.some(h=>h.type==='completion-timeline-recovered'&&h.taskId===t.id&&h.completedAt===t.completedAt)||base.history.some(h=>h.type==='actual-interval-deleted'&&h.date===date&&h.taskIds?.includes(t.id)))continue;
   if(!base.activity.some(a=>a.taskId&&a.taskId!==t.id&&a.date===date&&activityEnd(a)===p.start)||base.activity.some(a=>a.taskId===t.id&&a.date===date))continue;
   applyTaskCompletionTimeline(base,t.id,clock,p)
  }
@@ -639,7 +640,7 @@ function actualBlocks(d){let a=db.activity.filter(a=>a.date===d).sort((a,b)=>act
 function weekBars(d){let w=weekStart(d),nums=Array.from({length:7},(_,i)=>dayMins(addDay(w,i))),max=Math.max(60,...nums);return `<div class="summarybars">${nums.map((n,i)=>`<div title="${fmt(n)}"><i style="height:${Math.max(3,n/max*55)}px"></i><small>${'一二三四五六日'[i]}</small></div>`).join('')}</div>`}
 function calendarHTML(v,d){let start,end,days;if(v==='week'){start=weekStart(d);end=addDay(start,6);days=Array.from({length:7},(_,i)=>addDay(start,i))}else{let x=dt(d);start=`${x.getFullYear()}-${pad(x.getMonth()+1)}-01`;end=dateKey(new Date(x.getFullYear(),x.getMonth()+1,0));let head=weekStart(start);days=Array.from({length:42},(_,i)=>addDay(head,i))}let sum=rangeMins(start,end);return `<div class="sub"><div class="panelhead"><h3>${v==='week'?(weekStart(d)===weekStart(today())?'本周':'所选周'):(d.slice(0,7)===today().slice(0,7)?'本月':'所选月')}打卡 · ${esc(start)} 至 ${esc(end)}</h3><b>${fmt(sum)}</b></div><div class="calendar">${Array.from('一二三四五六日').map(x=>`<small style="text-align:center">周${x}</small>`).join('')}${days.map(a=>{let rec=db.activity.filter(r=>r.date===a),n=sumActivity(rec);return `<div class="day ${a===day?'selected':''}" style="opacity:${a<start||a>end?.4:1};background:${n?'#e9f2fb':'#f7f9fc'}" onclick="day='${a}';view='day';page='work';render()"><b>${dt(a).getDate()}</b><small>${n?fmt(n):'未记录'}</small><div class="bars">${Object.keys(zones).map(s=>`<i style="width:${n?sumActivity(rec.filter(r=>(r.state||'unknown')===s))/n*100:0}%;background:${s==='unknown'?'#ccd4df':getColor(s)}"></i>`).join('')}</div></div>`}).join('')}</div><div class="headrow sectiongap">${Object.keys(zones).map(s=>`<span class="pill" style="background:${s==='unknown'?'#e6e9ef':getColor(s)}">${zones[s].name}</span>`).join('')}</div></div>`}
 function renderFooter(){$('footerState').textContent=db.state?zones[db.state].name:'未选择状态';$('footerTime').textContent='今日工作 '+fmt(dayMins(today()))+(db.currentTask?' · '+(task(db.currentTask)?.name||''):'')}
-function modal(title,body){$('modalRoot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="panelhead"><h2>${esc(title)}</h2><button class="small" onclick="closeModal()">✕</button></div>${body}</div></div>`}function closeModal(){$('modalRoot').innerHTML=''}function option(v,n,sel){return `<option value="${esc(v)}" ${String(v)===String(sel)?'selected':''}>${esc(n)}</option>`}function taskOptions(sel,all=false){return option('','未指定',sel)+(all?db.tasks:activeTasks()).map(t=>option(t.id,t.name,sel)).join('')}function projectOptions(sel){return option('','独立任务',sel)+db.projects.map(p=>option(p.id,p.name,sel)).join('')}function field(label,html){return `<div class="field"><label>${label}</label>${html}</div>`}function input(id,v='',type='text',extra=''){return `<input id="${id}" type="${type}" value="${esc(v)}" ${extra}>`}function select(id,opts){return `<select id="${id}">${opts}</select>`}function actions(fn,extra=''){return `<div class="actions">${extra}<button onclick="closeModal()">取消</button><button class="primary" onclick="${fn}">确认保存</button></div>`}const val=id=>$(id).value;
+function modal(title,body){$('modalRoot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="panelhead"><h2>${esc(title)}</h2><button class="small" onclick="closeModal()">✕</button></div>${body}</div></div>`}function closeModal(){pendingActualDeletion=null;$('modalRoot').innerHTML=''}function option(v,n,sel){return `<option value="${esc(v)}" ${String(v)===String(sel)?'selected':''}>${esc(n)}</option>`}function taskOptions(sel,all=false){return option('','未指定',sel)+(all?db.tasks:activeTasks()).map(t=>option(t.id,t.name,sel)).join('')}function projectOptions(sel){return option('','独立任务',sel)+db.projects.map(p=>option(p.id,p.name,sel)).join('')}function field(label,html){return `<div class="field"><label>${label}</label>${html}</div>`}function input(id,v='',type='text',extra=''){return `<input id="${id}" type="${type}" value="${esc(v)}" ${extra}>`}function select(id,opts){return `<select id="${id}">${opts}</select>`}function actions(fn,extra=''){return `<div class="actions">${extra}<button onclick="closeModal()">取消</button><button class="primary" onclick="${fn}">确认保存</button></div>`}const val=id=>$(id).value;
 function estimateFor(cat){if(!cat.trim())return null;let a=db.tasks.filter(t=>t.done&&t.category===cat&&Number(t.actual??actualFor(t.id))>0).map(t=>Number(t.actual??actualFor(t.id))).sort((a,b)=>a-b);return a.length?{n:a.length,m:Math.round((a[Math.floor((a.length-1)/2)]+a[Math.floor(a.length/2)])/2)}:null}
 function editTask(id=null,pid=null,parent=null){let t=task(id)||{name:'',projectId:pid,parentId:parent,date:day,estimate:30,goal:'normal',category:'',priority:'',actual:null};let parOpts=option('','无上级任务',t.parentId)+db.tasks.filter(k=>k.id!==id&&k.projectId===t.projectId&&!descendant(k.id,id)).map(k=>option(k.id,k.name,t.parentId)).join('');modal(id?'编辑任务':'新建任务',field('任务名称',input('tn',t.name,'text','placeholder="可执行的具体行动"'))+field('所属项目',select('tp',projectOptions(t.projectId)))+field('上级任务',select('tpar',parOpts))+`<div class="formrow">${field('计划日期（可留空）',input('td',t.date,'date'))}${field('预计耗时（分钟）',input('te',t.estimate,'number','min="1" max="1440"'))}</div>`+field('同类任务标签（用于学习耗时）',input('tc',t.category,'text','oninput="suggestEstimate()" placeholder="例如：论文图表修改"'))+`<div id="estimateHint" class="muted"></div><div class="formrow">${field('每日目标',select('tg',[['low','保底'],['normal','进度'],['high','高能量']].map(([v,n])=>option(v,n,t.goal)).join('')))}${field('优先级（可选）',select('tprio',['','重要且紧急','重要但不紧急','紧急但不重要','不重要且不紧急'].map(v=>option(v,v||'未分类',t.priority)).join('')))}</div>`+(id&&(t.timerMs!=null||db.taskTimer?.taskId===id)?`<div class="notice">累计任务计时：${clockText(elapsedTaskMs(id))}（秒级计时，不计入10分钟工作统计）</div>`:'')+field('实际耗时（分钟，可修正）',input('ta',t.actual??(actualFor(id)||''),'number','min="0"'))+field('备注 / 最小行动',`<textarea id="tnote" rows="3">${esc(t.note||'')}</textarea>`)+actions(`saveTask(${id?"'"+safeId(id)+"'":'null'})`,id?`<button onclick="editTask(null,'${safeId(t.projectId||'')}','${safeId(id)}')">＋ 子任务</button><button class="danger" onclick="deleteTask('${safeId(id)}')">删除</button>`:''));$('tp').onchange=()=>{$('tpar').innerHTML=option('','无上级任务','')+db.tasks.filter(k=>k.id!==id&&String(k.projectId||'')===val('tp')&&!descendant(k.id,id)).map(k=>option(k.id,k.name,'')).join('')};suggestEstimate()}
 function descendant(id,ancestor){if(!ancestor)return false;let seen=new Set();while(id&&!seen.has(id)){if(id===ancestor)return true;seen.add(id);id=task(id)?.parentId}return false}function suggestEstimate(){let r=estimateFor(val('tc'));$('estimateHint').innerHTML=r?`历史同类任务 ${r.n} 项，中位耗时 ${r.m} 分钟。 <button class="small" onclick="$('te').value=${r.m}">采用建议</button>`:'暂无该类型的历史耗时，暂使用手动估算。'}function saveTask(id){let name=val('tn').trim(),estimate=Number(val('te')),p=val('tp')||null,par=val('tpar')||null;if(!name||!Number.isInteger(estimate)||estimate<1||estimate>1440||descendant(par,id))return toast('请检查任务名称、时间和上级任务');let t=task(id)||{id:uid(),done:false};Object.assign(t,{name,projectId:p,parentId:par,date:val('td')||null,estimate,category:val('tc').trim(),goal:val('tg'),priority:val('tprio'),actual:val('ta')===''?null:Math.max(0,Number(val('ta'))),note:val('tnote')});if(!id)db.tasks.push(t);else if(p!==null||!p)for(let c of db.tasks.filter(k=>k.id!==id&&descendant(k.id,id)))c.projectId=p;closeModal();render()}
@@ -949,7 +950,7 @@ function assignActivity(d,a,b){
  html+=field('状态',select('assignZ',Object.keys(zones).map(k=>option(k,zones[k].name,rec?.state||'unknown')).join('')));
  html+='<div class="notice">拖动工作块可移动位置，拖动上下边缘可修改时长。默认按5分钟吸附，按 Alt 精确到1分钟；按 Shift 拖动可框选多段。</div>';
  const action='saveAssignment('+JSON.stringify(d)+','+a+','+b+')';
- const remove='<button class="danger" onclick="deleteActivity('+JSON.stringify(d)+','+a+','+b+')">删除此记录</button>';
+ const remove='<button id="actualDeleteButton" type="button" class="danger" onclick="deleteActivity('+JSON.stringify(d)+','+a+','+b+')">删除此记录</button>';
  modal('调整实际工作记录',html+actions(action,remove))
 }
 function actualEditError(message){
@@ -983,7 +984,72 @@ function saveAssignment(d,a,b){
  closeModal();
  toast('已保存实际记录：'+hm(start)+'–'+hm(end)+' · '+(task(requestedTask)?.name||'未关联任务')+' · '+(zones[requestedState]?.name||requestedState))
 }
-function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
+let pendingActualDeletion=null;
+function actualDeletionDraft(base,date,start,end,expectedRows=null){
+ if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||![start,end].every(Number.isInteger)||start<0||end>1440||start>=end)return {error:'删除范围无效'};
+ const touching=base.activity.filter(a=>a.date===date&&activityStart(a)<end&&activityEnd(a)>start).sort((a,b)=>activityStart(a)-activityStart(b));
+ if(!touching.length)return {error:'该实际记录已经不存在'};
+ if(activityStart(touching[0])!==start||activityEnd(touching[touching.length-1])!==end||touching.some(a=>activityStart(a)<start||activityEnd(a)>end))return {error:'工作块的时间边界已变化，请重新打开记录'};
+ let cursor=start;for(const a of touching){if(activityStart(a)!==cursor)return {error:'所选记录中存在时间空隙，请重新打开'};cursor=activityEnd(a)}
+ if(cursor!==end)return {error:'工作块不完整，未删除'};
+ if(expectedRows!==null&&JSON.stringify(touching)!==expectedRows)return {error:'记录在确认期间发生变化，请重新打开后再删除'};
+ const next=clone(base),keys=new Set(touching.map(a=>a.date+':'+activityStart(a)+':'+activityEnd(a)));
+ next.activity=next.activity.filter(a=>!keys.has(a.date+':'+activityStart(a)+':'+activityEnd(a)));
+ const ids=[...new Set(touching.map(a=>a.taskId).filter(Boolean))];
+ const previousActual=Object.fromEntries(ids.map(id=>[id,base.tasks.find(t=>t.id===id)?.actual??null]));
+ for(const id of ids){const t=next.tasks.find(t=>t.id===id);if(t)t.actual=sumActivity(next.activity.filter(a=>a.taskId===id))}
+ next.history.push({type:'actual-interval-deleted',date,start,end,minutes:end-start,taskIds:ids,previousActual,deletedRows:clone(touching),time:new Date().toISOString()});
+ return {next,minutes:end-start,taskIds:ids,deletedRows:touching.length};
+}
+function cancelDeleteActivity(){
+ pendingActualDeletion=null;
+ $('actualDeleteConfirm')?.remove();
+ const button=$('actualDeleteButton');if(button){button.disabled=false;button.setAttribute('aria-expanded','false')}
+}
+function deleteActivity(d,a,b){
+ const parent=$('modalRoot')?.querySelector('.modal'),actions=parent?.querySelector('.actions');
+ if(!parent||!actions)return toast('编辑窗口已关闭，请重新打开实际记录');
+ if(pendingActualDeletion){return actualEditError('已显示删除确认，请先确认或取消')}
+ const rows=db.activity.filter(x=>x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b).sort((x,y)=>activityStart(x)-activityStart(y));
+ const preview=actualDeletionDraft(db,d,a,b);
+ if(preview.error)return actualEditError(preview.error);
+ pendingActualDeletion={date:d,start:a,end:b,expectedRows:JSON.stringify(rows)};
+ const panel=document.createElement('div');
+ panel.id='actualDeleteConfirm';panel.className='actual-delete-confirm';panel.setAttribute('role','group');
+ panel.setAttribute('aria-label','确认删除实际工作记录');
+ panel.innerHTML='<strong>确认删除 '+esc(d)+' '+hm(a)+'–'+hm(b)+' 的 '+fmt(preview.minutes)+' 实际工作记录？</strong>'+
+  '<p>仅删除该实际时段及任务工时关联，不删除任务、计划或其他时间块。原始记录保留在本地操作历史，任务完成勾选状态不改变。</p>'+
+  '<div class="actual-delete-actions"><button type="button" class="danger" id="confirmActualDeleteButton">确认删除</button><button type="button" id="cancelActualDeleteButton">保留记录</button></div>';
+ actions.parentNode.insertBefore(panel,actions);
+ panel.querySelector('#confirmActualDeleteButton').addEventListener('click',()=>confirmDeleteActivity());
+ panel.querySelector('#cancelActualDeleteButton').addEventListener('click',()=>cancelDeleteActivity());
+ const button=$('actualDeleteButton');if(button){button.disabled=true;button.setAttribute('aria-expanded','true')}
+}
+function confirmDeleteActivity(){
+ const pending=pendingActualDeletion;
+ if(!pending)return actualEditError('删除操作已失效，请重新打开记录');
+ const {date,start,end,expectedRows}=pending;
+ const result=actualDeletionDraft(db,date,start,end,expectedRows);
+ if(result.error){cancelDeleteActivity();return actualEditError(result.error)}
+ const issue=validate(result.next);if(issue)return actualEditError('删除未执行：'+issue);
+ try{window.FocusGrowthStorageGuard?.before()}catch{return actualEditError('本地数据已被其他标签更新，删除已停止；请先备份并刷新')}
+ const prior=db;
+ db=result.next;
+ try{
+  render();
+  if(localStorage.getItem(STORE)!==JSON.stringify(db))throw Error('本地记录未能成功写入存储');
+ }catch(e){
+  db=prior;
+  return actualEditError('删除未确认成功：'+(e?.message||'未知错误')+'。请先核对本地记录');
+ }
+ const remaining=db.activity.some(a=>a.date===date&&activityStart(a)<end&&activityEnd(a)>start);
+ if(remaining)return actualEditError('删除后的时间范围仍存在记录，请核对本地数据');
+ pendingActualDeletion=null;
+ closeModal();
+ window.FocusGrowthNotifyTaskChange?.();
+ toast('已删除 '+date+' '+hm(start)+'–'+hm(end)+' 的 '+fmt(result.minutes)+' 实际记录；任务和计划保留')
+}
+
 function browserActivity(e){
  if(!e?.isTrusted||document.visibilityState!=='visible'||(!validWorkSession(db.workSession)&&!db.taskTimer&&!db.recordBrowser))return;
  if(e.type==='pointerdown'&&e.target?.closest?.('button,[role="button"],a,.seg,.task-branch-toggle'))return; // UI controls do not count as work.
