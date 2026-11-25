@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4 — Input-backed work accounting and completed visa milestones
+- Mark remaining four PhD visa material tasks complete on the user's approximate 2026-11-24 completion date in the private task repository. Actual work durations and exact completion timestamps remain unasserted. Previous plans remain available for review.
+- Stop recording unattended wall time as work when an independent work session remains active. Record trusted keyboard, pointer-button and wheel activity in ten-minute blocks within the visible webpage; no passive pointer-movement counting or modifier-key-only counting. Clicking dashboard controls is not regarded as work.
+- Restrict task timer actuals to evidence-backed activity; the seconds counter remains a wall-clock reference. Preserve the manual old-timer recovery path for explicitly supplied historical times.
+- Add opt-in, authenticated Windows local activity collection using GetLastInputInfo and DPAPI-encrypted calendar-slot evidence (no typed text or key identities). It covers activity in other Windows applications while the trusted companion is armed. Raw activity and quadrant states stay out of the private GitHub data projection.
+- WARNING: Windows source changes require a local native rebuild and explicit real-machine validation. The previously running native EXE is unchanged. Earlier unconditional `work-session` records remain intact but are not verified activity.
+
 ## V0.4 — Task timer actual records
 - Persist actual task intervals when pausing, stopping, switching or completing a task, with task identity and state, minute-resolution activity, cumulative seconds, and non-overwrite overlap protection. Distinguish stopping from completion; reveal saved records and offer explicit old-timer recovery with user-supplied times. Sync only allowed task duration/completion fields; raw timer and activity stay local. Syntax and 16 focused mocked checks passed before final integration; browser acceptance pending.
 
