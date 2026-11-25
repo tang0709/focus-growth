@@ -15,6 +15,7 @@
 .lane.actual-drop-target{outline:2px dashed #8b9bb7;outline-offset:-3px;background:#eef2f8!important}.lane.actual-drop-target::after{content:'拖到已有工作块：沿用时间和状态；拖到空白：新建记录';position:sticky;z-index:10;display:block;top:5px;margin:5px;padding:7px;background:#f5f7fc;border:1px dashed #aeb9c9;border-radius:5px;color:#53637d;pointer-events:none;text-align:center;font-size:11px}
 .block.actual{touch-action:none}.block.actual.actual-moving{outline:2px dashed #536c9a;outline-offset:1px;z-index:9;opacity:.85}.block.actual.manual-adjustment{border:1px dashed #8d93a0}.block.actual .actual-edge{position:absolute;left:24px;right:8px;height:5px;z-index:4;opacity:0;cursor:ns-resize;background:#8c95a5aa;border-radius:3px}.block.actual .actual-edge-start{top:0}.block.actual .actual-edge-end{bottom:0}.block.actual:hover .actual-edge,.block.actual:focus-within .actual-edge{opacity:.9}.block.actual.actual-drop-hover{outline:3px solid var(--accent);outline-offset:-3px}.block.actual.actual-moving .actual-edge{opacity:0}
 .lane[data-plan-lane] .block:not(.actual){touch-action:none;cursor:grab}.lane[data-plan-lane] .block.plan-block-moving{cursor:grabbing;outline:2px dashed #607fbd;z-index:7;user-select:none}.lane[data-plan-lane].plan-select-mode .block{cursor:crosshair}
+.actual-edit-error{margin-top:12px;background:#fff4ed;color:#8c3b29;border:1px solid #e8bba5;white-space:pre-wrap}
 </style></head><body><header class="top"><div class="brand"><div class="logo"></div><div><b>专注 · 成长</b><small>先定位此刻，再决定下一步</small></div></div><nav class="nav" id="nav"><button data-page="work" class="active">⌂ 工作台</button><button data-page="projects">▤ 长期任务</button><button data-page="stats">▥ 统计分析</button><button data-page="settings">⚙ 设置</button></nav><div class="tools"><span id="demoBadge" class="pill"></span><button onclick="openSync()">对话更新</button><button onclick="toggleAI()">AI 助手</button></div></header><main class="wrap"><div id="metrics" class="metrics"></div><div class="main" id="work"><aside id="left" class="panel left"><div class="panelhead"><h2>启动状态</h2><button class="small" id="collapse" onclick="toggleLeft()">收起</button></div><div class="leftbody" id="leftbody"></div></aside><section class="panel"><div class="panelhead"><div class="headrow"><h2 id="dateLabel"></h2><button class="small" onclick="shiftDay(-1)">‹</button><button class="small" id="todayButton" onclick="goToday()">今天</button><button class="small" onclick="shiftDay(1)">›</button><input type="date" id="dateInput" style="width:132px;font-size:12px;padding:5px" onchange="setDay(this.value)"></div><div class="seg" id="viewButtons"><button onclick="setView('day')" data-view="day">时间轴</button><button onclick="setView('week')" data-view="week">周</button><button onclick="setView('month')" data-view="month">月</button></div></div><div id="taskTimerPanel"></div><div id="center"></div></section><aside class="panel right" id="right"></aside></div><section class="panel fullview" id="projects"></section><section class="panel fullview" id="stats"></section><section class="panel fullview" id="settings"></section></main><footer class="footer"><div><span class="dot"></span><b id="footerState">未选择状态</b>　<span id="footerTime"></span></div><div id="footerTimer"></div><span class="muted footnotice">原型：仅检测本网页内活动，未接入 Windows 后台监测</span><div><button class="small" onclick="recordManual()">补录工作</button> <button class="small" onclick="openSync()">数据同步</button></div></footer><div id="modalRoot"></div><div id="aiRoot"></div><div id="toastRoot"></div><input type="file" id="importFile" accept=".json,application/json" hidden><script>
 'use strict';
 // Before the sync preview can touch the normal workspace, retain its exact local JSON.
@@ -935,14 +936,36 @@ function assignActivity(d,a,b){
  const remove='<button class="danger" onclick="deleteActivity('+JSON.stringify(d)+','+a+','+b+')">删除此记录</button>';
  modal('调整实际工作记录',html+actions(action,remove))
 }
+function actualEditError(message){
+ const modalRoot=$('modalRoot')?.querySelector('.modal');
+ if(modalRoot){
+  let label=modalRoot.querySelector('#actualEditError');
+  if(!label){label=document.createElement('div');label.id='actualEditError';label.className='notice actual-edit-error';label.setAttribute('role','alert');const actions=modalRoot.querySelector('.actions');if(actions)modalRoot.insertBefore(label,actions);else modalRoot.appendChild(label)}
+  label.textContent=message;
+ }
+ toast(message)
+}
 function saveAssignment(d,a,b){
  const start=parseActualClock(val('assignStart')),end=parseActualClock(val('assignEnd'));
- const result=editActualIntervalDraft(db,d,a,b,start,end,new Date(),val('assignT')||null,val('assignZ'));
- if(result.error)return toast(result.error);
- const error=validate(result.next);if(error)return toast('未修改：'+error);
- try{window.FocusGrowthStorageGuard?.before()}catch{return toast('数据已变化，请刷新后重试')}
- db=result.next;closeModal();render();
- toast('已保存实际工作 '+hm(start)+'–'+hm(end)+'，'+fmt(result.minutes))
+ const requestedTask=val('assignT')||null,requestedState=val('assignZ');
+ const result=editActualIntervalDraft(db,d,a,b,start,end,new Date(),requestedTask,requestedState);
+ if(result.error)return actualEditError(result.error);
+ const error=validate(result.next);if(error)return actualEditError('未保存：'+error);
+ try{window.FocusGrowthStorageGuard?.before()}catch{return actualEditError('本地数据已被其他标签更新，不能覆盖；请先备份并刷新')}
+ const prior=db;
+ db=result.next;
+ try{
+  render();
+  if(localStorage.getItem(STORE)!==JSON.stringify(db))throw Error('本地记录未能成功写入存储');
+ }catch(e){
+  db=prior;
+  return actualEditError('保存失败：'+(e?.message||'未知错误')+'。原记录未主动覆盖，请检查本地存储')
+ }
+ const persisted=db.activity.filter(row=>row.date===d&&activityStart(row)>=start&&activityEnd(row)<=end);
+ const ok=persisted.length>0&&persisted.every(row=>(row.taskId||null)===requestedTask&&row.state===requestedState);
+ if(!ok)return actualEditError('记录已保存，但页面数据再次变化。请刷新核对后继续操作');
+ closeModal();
+ toast('已保存实际记录：'+hm(start)+'–'+hm(end)+' · '+(task(requestedTask)?.name||'未关联任务')+' · '+(zones[requestedState]?.name||requestedState))
 }
 function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
 function browserActivity(e){
