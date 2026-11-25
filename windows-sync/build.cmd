@@ -17,5 +17,5 @@ if not exist "web\index.html" (
   copy /y "..\sync.js" "web\sync.js" >nul
   copy /y "..\preparation.js" "web\preparation.js" >nul
 )
-"%FG_CSC%" /nologo /target:winexe /out:FocusGrowthSyncV04.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Net.Http.dll /r:System.Web.Extensions.dll /r:System.Security.dll Core.cs Transport.cs Bridge.cs Preparation.cs Tests.cs PreparationTests.cs Continuous.cs ContinuousBridge.cs ContinuousProgram.cs ContinuousTests.cs DeviceSessions.cs DesktopIntegration.cs
+"%FG_CSC%" /nologo /target:winexe /out:FocusGrowthSyncV04.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Net.Http.dll /r:System.Web.Extensions.dll /r:System.Security.dll Core.cs Transport.cs Bridge.cs Preparation.cs Tests.cs PreparationTests.cs Continuous.cs ContinuousBridge.cs ContinuousProgram.cs ContinuousTests.cs DeviceSessions.cs DesktopIntegration.cs DesktopActivity.cs
 exit /b %errorlevel%
