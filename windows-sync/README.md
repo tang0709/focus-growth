@@ -1,5 +1,17 @@
 # Focus & Growth V0.4 — trusted Windows companion
 
+## Local input-activity monitoring (source update, rebuild required)
+
+The Pages workspace now counts work only when an input-backed 10-minute activity slot exists. Clicking "Start work" alone does not count elapsed wall time as activity. The browser fallback observes trusted keydown, pointerdown and wheel events only while the page is visible. It does not observe other applications.
+
+The Windows companion source adds `DesktopActivity.cs`, using the Windows `GetLastInputInfo` idle counter. It records only a calendar date and ten-minute slot when an input occurred. It does not log key identities, typed text, screen contents, application names or window titles. Records remain under the current Windows user's DPAPI-encrypted local storage and outside the GitHub task-sync projection. Collection is armed by an authenticated browser request, stops on request, and has a 12-hour arm expiry as a safety limit. Samples are collected every five seconds while armed even if the browser is backgrounded. This detects Windows-session keyboard **or mouse** input, not verified productive work.
+
+New local routes: authenticated GET `/v1/activity`, authenticated POST `/v1/activity/arm` and `/v1/activity/stop` with empty JSON bodies. They retain the existing fixed loopback host, exact Origin, bearer session, trusted-device authorization and `X-FG-Client` checks. No remote write or new permission scope was added.
+
+**Deployment and validation:** changes to C# do not update the previously running Windows executable. Review the diff, preserve encrypted backups and task data, run `windows-sync/build.cmd` on Windows, run `FocusGrowthSyncV04.exe --selftest`, and test first with `--synthetic-v04`. Verify idle for 20 minutes creates zero blocks; typing in another application for two separate 10-minute slots creates exactly two local blocks; closing the browser while the tray app runs preserves those active slots for subsequent retrieval; native disconnect creates no fabricated blocks; no typed content appears in local or remote data; existing continuous sync and session revocation remain functional. Only then replace/restart the production executable using the original trusted-device workflow. Do not change PAT access or grant new GitHub scopes. If the collector was not rebuilt, browser-only activity is still safe and native monitoring is unavailable.
+
+Older `source:work-session` automatic records have not been deleted, altered or reclassified. They lack input evidence and should be reviewed before treating prior daily totals as verified. Approximate retrospectively marked tasks do not create actual activity records.
+
 Use the same Windows account with existing Credential Manager entry `FocusGrowthSync/GitHub`. The PAT stays native. Run `FocusGrowthSyncV04.exe --production-readonly` for the existing Pages workspace. `--synthetic-v04` uses isolated browser storage and a private `sync/tests/v04-<device>.json` file. The name production-readonly remains for compatibility: actual writes depend on native authorization and saved enable/pause state.
 
 ## Permanent trust and revocation
