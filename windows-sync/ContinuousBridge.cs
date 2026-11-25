@@ -47,6 +47,6 @@ public sealed class ContinuousBridge:IDisposable {
  else if(req.Path=="/v1/test/network"){Schema.Require(body.Count==1&&J.Get(body,"offline") is bool,"invalid_network");control.SetNetwork((bool)body["offline"]);control.Tick(true);}
  else throw new Fault("route_rejected");Respond(stream,200,result??control.View(),origin,"application/json");
  }catch(Fault ex){Respond(stream,ex.Code=="unauthorized"?401:ex.Code.Contains("authorization")||ex.Code=="synthetic_control_only"?403:ex.Code.Contains("conflict")||ex.Code=="workspace_in_use"?409:400,new{error=ex.Code},req==null?null:Origin(req),"application/json");}catch{Respond(stream,500,new{error="request_failed"},null,"application/json");}}}}catch{}finally{Interlocked.Decrement(ref active);}}
- public void Dispose(){stopped=true;listener.Stop();activity?.Dispose();}
+ public void Dispose(){stopped=true;listener.Stop();if(activity!=null)activity.Dispose();}
 }
 }
