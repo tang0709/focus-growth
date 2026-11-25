@@ -1,5 +1,11 @@
 # Changelog
 
+## V0.4 — Drop onto unassigned actual work and move planned blocks
+- Fix plan-to-actual dragging to resolve its target from the pointer's exact time against browser-local activity, not from the HTML drag/drop event target. Dropping onto an unassigned input-backed or manually adjusted block now assigns the planned task to that existing continuous block, inherits its entire time and quadrant state, and adds no new work minutes. Existing task associations remain protected.
+- Use pointer-based dragging for the body of each plan block. Move up or down within the plan lane to reschedule its start while retaining duration, or move across to the actual lane to confirm work. A short click retains plan editing; existing plan selection mode and edge resizing remain available.
+- Preserve the original plan when assigning it to actual time. Task actual minutes are derived from existing local activity, with completion updated only when all related plan occurrences are accounted for. Changes pass through the existing scoped sync notification without synchronizing raw activity.
+- Source parsing, ten isolated existing-block assignment assertions, eleven simulated pointer gesture assertions, and final integration checks passed. Production-browser acceptance is not yet confirmed.
+
 ## V0.4 — Inherit existing work-state blocks and adjust actual placement
 - Drag a planned event onto an existing actual work block to adopt the existing block's complete time range and quadrant state, including focus/投入区, without duplicating or changing previously measured activity. Associate the task, derive its actual minutes from the local actual timeline, and mark a leaf task complete only when all associated plan occurrences are accounted for.
 - Allow users to reposition an existing actual work block by dragging its body; drag its top or bottom edge to adjust duration. Use five-minute snapping by default, Alt for one-minute precision, and Shift-drag for the existing multi-block selection. A single click opens a precise start/end-time editor.
