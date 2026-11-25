@@ -175,7 +175,7 @@
     const slotStart=new Date(d+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00').getTime();
     if(!Number.isFinite(slotStart)||slotStart+600000<=sessionStart||slotStart>Date.now()+60000)continue;
     if(next.activity.some(a=>a.date===d&&activityStart(a)<(slot+1)*10&&activityEnd(a)>slot*10))continue;
-    next.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||null,source:'desktop-input'});
+    next.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||null,source:'desktop-input',sessionStartedAt:sessionStart});
     added++;
    }
    if(added){
