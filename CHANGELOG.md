@@ -1,5 +1,10 @@
 # Changelog
 
+## V0.4 — Recover automatic sync after temporary request failures (2026-11-25)
+- Temporary device-activity request failures no longer disable automatic writeback or strand the browser in read-only mode. Reconcile with native enabled/authorized state while respecting explicit user pause, revocation and invalid identities.
+- Retry transient local connection failures within30 seconds; network-online and foreground events retry immediately. Existing queues, data guards and native rate limits remain intact.
+- Validation:54 frontend checks passed, including four reconnect regressions. Updated the synthetic ten-minute activity fixture to pass trusted input as required by the current app. Preserved all latest timeline gesture protection and other concurrent features.
+
 ## V0.4 — Prevent active sync from interrupting actual-block drags
 - Fix a second, independently verified cause of failed actual-time adjustments while the work monitor is active. Native desktop activity polling could call full `render()` during a pointer gesture, replacing the dragged DOM element and interrupting pointer capture even when time validation was correct. Incoming official sync updates could also re-render during a drag.
 - Expose a short-lived timeline gesture lock covering actual-block movement, plan-block movement and multi-selection. Defer desktop activity imports and incoming sync UI application while locked. Polling and authorized synchronization resume after the gesture, and activity evidence is not discarded or uploaded outside its existing local-only privacy scope.
@@ -179,4 +184,5 @@
 - Migrated the existing standalone HTML prototype to index.html without changing its content.
 - Preserved second-by-second task timer and separate ten-minute activity statistics.
 - Windows global activity monitoring and live AI backend remain future features.
+
 

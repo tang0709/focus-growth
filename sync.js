@@ -5,6 +5,7 @@
  const API = TEST?'http://127.0.0.1:18420':'http://127.0.0.1:18421';
  const STORE=TEST?'start-workbench-sync-test-v04':'start-workbench-v1',clientId=crypto.randomUUID();
  const KEY = TEST?'fg-sync-test-meta-v04':'fg-sync-production-meta-v04';
+ let userPaused=false;
  let generation=0,metaCorrupt=false,stale=false,persistenceFailed=false,seenRaw=localStorage.getItem(STORE);
  const fields = {
   projects: ['id','name','deadline','priority','weeklyMin'],
@@ -67,7 +68,7 @@
   }finally{clearTimeout(timeout);}
  }
  let reconnecting=null;
- async function restoreDevice(){if(!window.FocusGrowthDeviceSession)return false;if(reconnecting)return reconnecting;reconnecting=(async()=>{const result=await FocusGrowthDeviceSession.recover(rawRequest);if(!result)return false;session=result.session;const raw=browserBackup();const attached=await rawRequest('/v1/attach',{clientId,raw,source:{origin:location.origin,pathname:location.pathname,storageKey:STORE}});if(attached.backup?.restoreTest!=='PASS'||attached.backup.encrypted!==true)throw Error('restore_backup_not_verified');enabled=attached.enabled===true&&attached.authorized===true;status=enabled?'设备会话已安全恢复':'已恢复连接 · 服务暂停';return true;})().finally(()=>{reconnecting=null;});return reconnecting;}
+ async function restoreDevice(){if(!window.FocusGrowthDeviceSession)return false;if(reconnecting)return reconnecting;reconnecting=(async()=>{const result=await FocusGrowthDeviceSession.recover(rawRequest);if(!result)return false;session=result.session;const raw=browserBackup();const attached=await rawRequest('/v1/attach',{clientId,raw,source:{origin:location.origin,pathname:location.pathname,storageKey:STORE}});if(attached.backup?.restoreTest!=='PASS'||attached.backup.encrypted!==true)throw Error('restore_backup_not_verified');enabled=!userPaused&&attached.enabled===true&&attached.authorized===true;status=enabled?'设备会话已安全恢复':'已恢复连接 · 服务暂停';return true;})().finally(()=>{reconnecting=null;});return reconnecting;}
  async function request(path,body){try{return await rawRequest(path,body);}catch(e){if(e.message==='unauthorized'&&!path.startsWith('/v1/session/')&&await restoreDevice())return rawRequest(path,body);throw e;}}
  async function applyIncoming(remote) {
   if(window.FocusGrowthTimelineGesture?.isActive?.()){status='等待时间轴拖动结束';return false}
@@ -104,8 +105,8 @@
    if(startedGeneration!==generation)return;latestRemote=copy(response.state);serverPendingOperation=response.pendingOperationId||null;
    status=response.status;last=response.lastSuccess||last;error=response.error||'';conflicts=response.conflicts||[];
    if(status==='已同步'&&!response.pending){if(meta.pending)meta.base=copy(meta.pending.desired);meta.pending=null;persist();const applied=await applyIncoming(response.state);if(!applied)return;queue();if(applied){failures=0;nextAt=Date.now()+(meta.pending?1500:5000);if(meta.pending){clearTimeout(timer);timer=setTimeout(()=>sync(),1500);}}}
-   else nextAt=Date.now()+Math.min(300000,5000*2**Math.min(++failures,6));
-  }catch(e){if(status!=='等待授权')status='离线';error=e.message==='Failed to fetch'?'无法连接本地服务。检查程序、配对及浏览器本地网络权限；也可使用本地受信网页。':e.message;nextAt=Date.now()+Math.min(300000,5000*2**Math.min(++failures,6));}
+   else nextAt=Date.now()+Math.min(30000,5000*2**Math.min(++failures,6));
+  }catch(e){if(status!=='等待授权')status='连接暂时中断 · 自动重试中';error=e.message==='Failed to fetch'?'无法连接本地服务。检查程序、配对及浏览器本地网络权限；也可使用本地受信网页。':e.message;nextAt=Date.now()+Math.min(30000,5000*2**Math.min(++failures,6));}
   finally{busy=false;show();}
  }
  function dirty(){if(applying)return;try{assertFresh();queue();status=enabled?'同步中':session?'已暂停 · 本地更改已暂存':'未连接 · 本地更改已暂存';show();if(enabled){clearTimeout(timer);timer=setTimeout(()=>sync(),1500);}}catch(e){enabled=false;error=e.message;status='本地持久化失败或多标签冲突';show();}}
@@ -130,9 +131,9 @@ window.FocusGrowthNotifyTaskChange=dirty;
  }
  let resizing=false;const oldResize=window.resizePlan;window.resizePlan=function(...args){resizing=true;return oldResize.apply(this,args);};
  window.addEventListener('pointerup',()=>{if(resizing){resizing=false;setTimeout(dirty,0);}});
- window.fgSyncReadOnly=async()=>{if(!session||stale||metaCorrupt)return;try{const response=await request('/v1/state');if(response.error)throw Error(response.error);latestRemote=copy(response.state);const matches=sameData(project(),response.state);if(matches&&!meta.pending){meta.base=copy(response.state);meta.bound=true;persist();}status='只读核验：'+(matches?'与本地一致':'存在差异，未覆盖本地');error='revision='+response.state.revision+'；正式授权='+response.authorized+'；服务启用='+response.enabled+'；数量='+JSON.stringify(Object.fromEntries(Object.keys(fields).map(k=>[k,response.state[k].length])));show();}catch(e){status='离线';error=e.message;show();}};
- window.fgSyncEnable=async()=>{if(!session)return toast('先配对本地服务。');if(!TEST&&!meta.bound)return toast('先完成只读基准对齐；存在差异时先做备份和预览。');try{browserBackup();await checkpoint(JSON.stringify(db));const result=await request('/v1/enable',{clientId});if(result.enabled!==true||!TEST&&result.authorized!==true)throw Error('continuous_authorization_required');generation++;enabled=true;await sync(true);}catch(e){enabled=false;status='等待授权或启用失败';error=e.message;show();}};
- window.fgSyncPause=async()=>{generation++;enabled=false;clearTimeout(timer);try{if(session)await request('/v1/pause',{});status='已暂停 · 队列保留';error='';}catch(e){status='网页已暂停；请在Windows确认服务暂停';error=e.message;}show();};
+ window.fgSyncReadOnly=async()=>{if(!session||stale||metaCorrupt)return;try{const response=await request('/v1/state');if(response.error)throw Error(response.error);latestRemote=copy(response.state);const matches=sameData(project(),response.state);if(matches&&!meta.pending){meta.base=copy(response.state);meta.bound=true;persist();}if(!userPaused&&meta.bound&&response.enabled===true&&response.authorized===true){enabled=true;nextAt=0;status='连接已恢复 · 等待增量同步';error='';show();return;}status='只读核验：'+(matches?'与本地一致':'存在差异，未覆盖本地');error='revision='+response.state.revision+'；正式授权='+response.authorized+'；服务启用='+response.enabled+'；数量='+JSON.stringify(Object.fromEntries(Object.keys(fields).map(k=>[k,response.state[k].length])));show();}catch(e){status='离线';error=e.message;show();}};
+ window.fgSyncEnable=async()=>{userPaused=false;if(!session)return toast('先配对本地服务。');if(!TEST&&!meta.bound)return toast('先完成只读基准对齐；存在差异时先做备份和预览。');try{browserBackup();await checkpoint(JSON.stringify(db));const result=await request('/v1/enable',{clientId});if(result.enabled!==true||!TEST&&result.authorized!==true)throw Error('continuous_authorization_required');generation++;enabled=true;await sync(true);}catch(e){enabled=false;status='等待授权或启用失败';error=e.message;show();}};
+ window.fgSyncPause=async()=>{userPaused=true;generation++;enabled=false;clearTimeout(timer);try{if(session)await request('/v1/pause',{});status='已暂停 · 队列保留';error='';}catch(e){status='网页已暂停；请在Windows确认服务暂停';error=e.message;}show();};
  window.fgSyncPair=async()=>{if(metaCorrupt||stale)return toast('先处理元数据或多标签冲突。');status='等待授权';error='';show();try{const result=await request('/v1/pair',{code:document.getElementById('fg-pair-code').value.trim()});if(result.version!=='0.4'||result.mode!==(TEST?'synthetic':'production'))throw Error('native_web_mode_or_build_mismatch');session=result.session;if(window.FocusGrowthDeviceSession)await FocusGrowthDeviceSession.enroll(rawRequest);document.getElementById('fg-pair-code').value='';const raw=browserBackup();const attached=await request('/v1/attach',{clientId,raw,source:{origin:location.origin,pathname:location.pathname,storageKey:STORE}});if(attached.backup?.restoreTest!=='PASS'||attached.backup.encrypted!==true)throw Error('attach_backup_not_verified');if(TEST)await fgSyncEnable();else await fgSyncReadOnly();}catch(e){enabled=false;status='等待授权';error=e.message;show();}};
  window.fgSyncTestNetwork=async offline=>{if(!TEST||!session)return;await request('/v1/test/network',{offline});nextAt=0;await sync(true);};
  window.fgSyncManual=()=>sync(true);
@@ -214,9 +215,10 @@ window.FocusGrowthNotifyTaskChange=dirty;
  window.FocusGrowthDesktopActivity={arm:desktopActivityArm,stop:desktopActivityStop,poll:desktopActivityPoll};
  setInterval(()=>{if(validWorkSession(db.workSession)||db.taskTimer)desktopActivityPoll()},5000);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(validWorkSession(db.workSession)||db.taskTimer))desktopActivityPoll()});
- window.addEventListener('online',()=>sync());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
+ window.addEventListener('online',()=>{nextAt=0;return sync(true);});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){nextAt=0;return sync(true);}});
  setInterval(()=>{if(document.visibilityState!=='visible')return;if(session)sync();else if(window.FocusGrowthDeviceSession&&!reconnecting&&Date.now()>=nextAt){restoreDevice().then(ok=>{if(ok)sync(true);}).catch(e=>{nextAt=Date.now()+30000;error=e.message;show();});}},5000);
  // Test seam exposes pure transforms only, never session or credentials.
  window.FocusGrowthSyncTransforms={project,merge};
-if(window.FocusGrowthDeviceSession){FocusGrowthDeviceSession.listen(rawRequest,e=>{enabled=false;generation++;error=e.message;status='设备会话需重新认证';show();});restoreDevice().then(ok=>{if(ok)sync(true);}).catch(e=>{error=e.message;status='会话恢复未完成，请检查本地服务或重新配对';show();});}
+if(window.FocusGrowthDeviceSession){FocusGrowthDeviceSession.listen(rawRequest,e=>{error=e.message;if(/session_(revoked|unknown|signature|origin|reauthentication)|device_key_not_secure/.test(e.message)){enabled=false;session='';generation++;status='设备认证失效，请重新认证';}else{status=userPaused?'已暂停 · 队列保留':'连接暂时中断 · 正在自动重连';nextAt=0;}show();});restoreDevice().then(ok=>{if(ok)sync(true);}).catch(e=>{error=e.message;status='会话恢复未完成，请检查本地服务或重新配对';show();});}
 })();
+
