@@ -28,7 +28,109 @@ if(new URLSearchParams(location.search).get('syncTest')!=='1'){
 const $=id=>document.getElementById(id), DAY=1440, SCALE=.8, STORE=(new URLSearchParams(location.search).get('syncTest')==='1'?'start-workbench-sync-test-v04':'start-workbench-v1'), zones={focus:{name:'投入区',desc:'低压力 · 高能量',tip:'停止准备，直接行动。',icon:'▷'},noise:{name:'降噪区',desc:'高压力 · 高能量',tip:'先清空思绪，再做减法。',icon:'◉'},activate:{name:'激活区',desc:'低压力 · 低能量',tip:'从感兴趣的事情入手。',icon:'✧'},repair:{name:'修复区',desc:'高压力 · 低能量',tip:'降低负担，寻找最小行动。',icon:'♡'},unknown:{name:'未分类',desc:'',tip:'',icon:'·'}}, defaults={focus:[['继续上次任务','直接恢复最近的任务'],['今日核心任务','选择当前最重要的一件事'],['直接开始工作','不再优化启动方式'],['沉浸工作模式','收起辅助区域']],noise:[['思绪倾倒板','把脑中的所有事情写下来'],['单一任务选择器','从任务中只选择一件'],['临时想法寄存箱','暂存不需要现在处理的想法'],['单任务专注模式','减少其他任务的干扰']],activate:[['兴趣任务推荐','优先选择感兴趣的任务'],['随机任务抽取','减少选择负担'],['快速成就任务','从短耗时任务开始'],['趣味探索入口','先从好玩的部分入手']],repair:[['最小行动生成器','找出轻松状态下也能做的第一步'],['自由休息计时器','允许自己暂时休息'],['低负担任务筛选','筛选耗时较短的任务'],['低压力工作模式','只关注当前一个动作']]};
 const pad=n=>String(n).padStart(2,'0'), dateKey=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`, today=()=>dateKey(), dt=s=>new Date(s+'T12:00:00'), addDay=(d,n)=>{let x=dt(d);x.setDate(x.getDate()+n);return dateKey(x)}, uid=()=>globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2), fmt=n=>`${Math.floor(n/60)}h ${pad(n%60)}m`, hm=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`, min=s=>{let [h,m]=String(s).split(':').map(Number);return h*60+m}, esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])), safeId=s=>esc(s), clone=o=>JSON.parse(JSON.stringify(o));
 function fresh(demo=false,d=today()){let data={version:1,demo,state:null,currentTask:null,taskTimer:null,workSession:null,projects:[],tasks:[],plans:[],activity:[],notes:[],widgets:clone(defaults),theme:{bg:'#edf3f8',accent:'#607fe0',focus:'#dcefe7',noise:'#fae6db',activate:'#dfebfc',repair:'#eee3f5'},pin:false,recordBrowser:false,goals:{low:60,normal:180,high:300},history:[]};if(demo){data.state='activate';data.projects=[{id:'p1',name:'示例 · 论文修改',deadline:addDay(d,14),priority:'重要且紧急',weeklyMin:120},{id:'p2',name:'示例 · 软件开发',deadline:addDay(d,30),priority:'重要但不紧急',weeklyMin:90},{id:'p3',name:'示例 · 学习计划',deadline:'',priority:'',weeklyMin:30}];let a=[['t1','p1','Introduction 修改',60,false,'normal'],['t2','p1','核查参考文献',30,true,'low'],['t3','p1','完善实验图表',90,false,'high'],['t4','p2','修复组件 Bug',45,false,'low'],['t5','p2','完善主题配色',60,false,'normal'],['t6','p3','阅读专业文献',30,true,'normal'],['t7','p1','调整第一段论述',20,false,'low']];data.tasks=a.map(([id,projectId,name,estimate,done,goal])=>({id,projectId,name,estimate,done,goal,parentId:id==='t7'?'t1':null,date:d,category:'',priority:'',actual:null}));data.plans=[{id:'s1',taskId:'t7',date:d,start:540,duration:30},{id:'s2',taskId:'t2',date:d,start:580,duration:30},{id:'s3',taskId:'t4',date:d,start:660,duration:50},{id:'s4',taskId:'t5',date:d,start:810,duration:60},{id:'s5',taskId:'t6',date:d,start:1020,duration:30}];for(let j=0;j<7;j++){let day=addDay(d,-j);for(let i=0;i<(j===0?9:16+j);i++){data.activity.push({date:day,slot:54+i+(i>5?3:0),state:['focus','activate','noise','repair'][(Math.floor(i/5)+j)%4],taskId:j===0&&i<3?'t2':null,source:'demo'})}}}return data}
-function pristineDemo(x){if(!x||x.demo!==true)return false;let d=x.tasks?.find(t=>t.id==='t1')?.date;if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;let expected=fresh(true,d);if(!Object.hasOwn(x,'workSession'))delete expected.workSession;return JSON.stringify(x)===JSON.stringify(expected)}let db;try{db=JSON.parse(localStorage.getItem(STORE))||fresh(false);if(pristineDemo(db))db=fresh(false)}catch{db=fresh(false)}let day=today(),view='day',mode='compare',page='work',collapsed=false,firstRender=true,lastSlot='',lastToast,search='';const save=()=>{window.FocusGrowthStorageGuard?.before();try{localStorage.setItem(STORE,JSON.stringify(db));window.FocusGrowthStorageGuard?.after()}catch(e){window.FocusGrowthStorageGuard?.failed();toast('无法保存：请导出备份，检查浏览器存储权限。')}};function toast(s){$('toastRoot').innerHTML=`<div class="toast">${esc(s)}</div>`;clearTimeout(lastToast);lastToast=setTimeout(()=>$('toastRoot').innerHTML='',3000)}
+function pristineDemo(x){if(!x||x.demo!==true)return false;let d=x.tasks?.find(t=>t.id==='t1')?.date;if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;let expected=fresh(true,d);if(!Object.hasOwn(x,'workSession'))delete expected.workSession;return JSON.stringify(x)===JSON.stringify(expected)}let db;try{db=JSON.parse(localStorage.getItem(STORE))||fresh(false);if(pristineDemo(db))db=fresh(false)}catch{db=fresh(false)}let day=today(),view='day',mode='compare',page='work',collapsed=false,firstRender=true,lastSlot='',lastToast,search='';const save=()=>{window.FocusGrowthStorageGuard?.before();try{localStorage.setItem(STORE,JSON.stringify(db));window.FocusGrowthStorageGuard?.after();undoCommit()}catch(e){window.FocusGrowthStorageGuard?.failed();toast('无法保存：请导出备份，检查浏览器存储权限。')}};
+const UNDO_FIELDS=['projects','tasks','plans','activity','notes','history','widgets','goals','theme','state','recordBrowser','pin','archiveIds'];
+const UNDO_LIMIT=20,undoStack=[],redoStack=[];
+let undoGesture=null,undoApplying=false,undoMuted=0;
+function undoSnapshot(){
+ const out={};
+ for(const key of UNDO_FIELDS)out[key]=key==='archiveIds'?[...archivedTaskIds].sort():clone(db[key]);
+ return out;
+}
+function undoCapture(){
+ if(undoApplying||undoMuted)return;
+ undoGesture={before:undoSnapshot(),taskTimer:JSON.stringify(db.taskTimer),workSession:JSON.stringify(db.workSession)};
+}
+function undoIsPassiveOnly(before,after,keys){
+ if(keys.some(k=>!['activity','history'].includes(k)))return false;
+ if(!keys.includes('activity'))return true;
+ const left=before.activity,right=after.activity;
+ return right.length>=left.length&&left.every((a,i)=>JSON.stringify(a)===JSON.stringify(right[i]))&&
+  right.slice(left.length).every(a=>['browser','desktop-input','work-session-input'].includes(a.source));
+}
+function undoCommit(){
+ if(!undoGesture||undoApplying||undoMuted)return;
+ const g=undoGesture,after=undoSnapshot(),before=g.before;
+ const keys=UNDO_FIELDS.filter(k=>JSON.stringify(before[k])!==JSON.stringify(after[k]));
+ if(!keys.length)return;
+ if(undoIsPassiveOnly(before,after,keys)){g.before=after;return}
+ undoGesture=null;
+ // Recording and live timers are not editable history. Never rewind their ongoing clocks.
+ const timerChanged=JSON.stringify(db.taskTimer)!==g.taskTimer||JSON.stringify(db.workSession)!==g.workSession;
+ const oldTimer=new Map(before.tasks.map(t=>[t.id,t.timerMs??0]));
+ const timeChanged=after.tasks.some(t=>(t.timerMs??0)!==(oldTimer.get(t.id)??0));
+ if(timerChanged||timeChanged)return;
+ if(!keys.some(k=>k!=='history'))return;
+ const entry={keys,before:{},after:{}};
+ for(const k of keys){entry.before[k]=clone(before[k]);entry.after[k]=clone(after[k])}
+ undoStack.push(entry);if(undoStack.length>UNDO_LIMIT)undoStack.shift();
+ redoStack.length=0;
+}
+function undoRestore(entry,to){
+ const live=undoSnapshot(),expected=to==='before'?entry.after:entry.before;
+ for(const k of entry.keys){
+  if(JSON.stringify(live[k])!==JSON.stringify(expected[k])){
+   undoStack.length=0;redoStack.length=0;
+   toast('撤销记录已过期：同步或后台数据发生变化，已保护现有内容');return false;
+  }
+ }
+ const restored=to==='before'?entry.before:entry.after;
+ const next=clone(db);
+ for(const key of entry.keys)if(key!=='archiveIds')next[key]=clone(restored[key]);
+ if((db.taskTimer||db.workSession)&&entry.keys.some(k=>['tasks','activity','history'].includes(k))){
+  toast('正在计时或监测。请先暂停或结束，再撤销涉及任务和实际工时的操作');return false
+ }
+ const problem=validate(next);if(problem){toast('撤销被阻止：'+problem);return false}
+ try{window.FocusGrowthStorageGuard?.before()}catch{toast('另一个标签页已修改数据，请刷新后再操作');return false}
+ const oldDb=db,oldArchive=[...archivedTaskIds],restoreArchive=entry.keys.includes('archiveIds');
+ undoApplying=true;
+ try{
+  if(restoreArchive){
+   localStorage.setItem(ARCHIVE_KEY,JSON.stringify(restored.archiveIds));
+   archivedTaskIds=new Set(restored.archiveIds);
+  }
+  db=next;render();
+  if(localStorage.getItem(STORE)!==JSON.stringify(db))throw Error('工作台数据写入后校验失败');
+  if(restoreArchive&&localStorage.getItem(ARCHIVE_KEY)!==JSON.stringify(restored.archiveIds))throw Error('归档数据写入校验失败');
+ }catch(e){
+  db=oldDb;
+  if(restoreArchive){try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(oldArchive));archivedTaskIds=new Set(oldArchive)}catch{}}
+  try{render()}catch{}
+  toast('撤销未完成：'+(e?.message||'存储异常'));return false
+ }finally{undoApplying=false}
+ if(entry.keys.some(k=>['projects','tasks','plans'].includes(k)))window.FocusGrowthNotifyTaskChange?.();
+ toast(to==='before'?'已撤销上一步修改':'已重做上一步修改');
+ return true
+}
+function undoLastAction(){
+ if(!undoStack.length)return toast('没有可撤销的编辑操作');
+ const entry=undoStack[undoStack.length-1];
+ if(undoRestore(entry,'before')){undoStack.pop();redoStack.push(entry);return true}
+ return false
+}
+function redoLastAction(){
+ if(!redoStack.length)return toast('没有可重做的操作');
+ const entry=redoStack[redoStack.length-1];
+ if(undoRestore(entry,'after')){redoStack.pop();undoStack.push(entry);return true}
+ return false
+}
+window.FocusGrowthUndo={invalidate(){
+ undoGesture=null;undoStack.length=0;redoStack.length=0;
+},suspend(){undoMuted++;undoGesture=null},resume(){undoMuted=Math.max(0,undoMuted-1)},capture:undoCapture,commit:undoCommit};
+function undoEditorTarget(node){return !!node?.closest?.('input,textarea,select,[contenteditable="true"],[role="textbox"]')}
+window.addEventListener('pointerdown',e=>{if(e.isTrusted)undoCapture()},{capture:true});
+window.addEventListener('keydown',e=>{
+ if(!(e.ctrlKey||e.metaKey)||e.altKey)return;
+ const key=e.key.toLowerCase();
+ if(!['z','y'].includes(key)||undoEditorTarget(e.target))return;
+ e.preventDefault();e.stopImmediatePropagation();
+ if(key==='y'||key==='z'&&e.shiftKey)redoLastAction();else undoLastAction()
+},{capture:true});
+window.addEventListener('keydown',e=>{
+ if(!e.isTrusted||undoEditorTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
+ if(e.key==='Enter'||e.key===' ')undoCapture()
+},{capture:true});
+function toast(s){$('toastRoot').innerHTML=`<div class="toast">${esc(s)}</div>`;clearTimeout(lastToast);lastToast=setTimeout(()=>$('toastRoot').innerHTML='',3000)}
 function task(id){return db.tasks.find(t=>t.id===id)}function project(id){return db.projects.find(p=>p.id===id)}function activityStart(a){return a.startMinute??a.slot*10}function activityEnd(a){return a.endMinute??(a.slot+1)*10}function activityMinutes(a){return activityEnd(a)-activityStart(a)}function sumActivity(a){return a.reduce((n,r)=>n+activityMinutes(r),0)}function actualFor(id){return id?sumActivity(db.activity.filter(a=>a.taskId===id)):0}function dayMins(d){return sumActivity(db.activity.filter(a=>a.date===d))}function rangeMins(a,b){return sumActivity(db.activity.filter(x=>x.date>=a&&x.date<=b))}function weekStart(d){let x=dt(d);return addDay(d,-((x.getDay()+6)%7))}function isOptionalTemplate(t){return t.category==='每日可选模板'}function isOptionalTask(t){return isOptionalTemplate(t)||t.category==='每日可选任务'||t.category==='维护待办'}function progress(p){let a=db.tasks.filter(t=>!isOptionalTask(t)&&t.projectId===p.id&&!db.tasks.some(c=>c.parentId===t.id));return {n:a.length,k:a.filter(t=>t.done).length}}function activeTasks(){return db.tasks.filter(t=>!isOptionalTask(t)&&!t.done&&!db.tasks.some(c=>c.parentId===t.id))}function completedTasksLast(tasks){return [...tasks.filter(t=>!t.done),...tasks.filter(t=>!!t.done)]}
 function dayTasks(){let ids=new Set(db.plans.filter(p=>p.date===day).map(p=>p.taskId));return completedTasksLast(db.tasks.filter(t=>!isOptionalTask(t)&&!db.tasks.some(c=>c.parentId===t.id)&&(t.date===day||ids.has(t.id))))}
 function optionalInstanceId(t,d){return 'daily-'+t.id+'-'+d}
@@ -431,7 +533,7 @@ function axisResizeKey(e){
  let n=e.key==='ArrowUp'?h-40:e.key==='ArrowDown'?h+40:e.key==='Home'?AXIS_MIN:e.key==='End'?AXIS_MAX:null;
  if(n===null)return;e.preventDefault();setAxisHeight(n)
 }
-function setView(v){view=v;renderCenter()}function setMode(m){mode=m;renderCenter()}function setDay(d){if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;day=d;render()}function shiftDay(n){setDay(addDay(day,n*(view==='week'?7:view==='month'?30:1)))}function goToday(){setDay(today())}function renderCenter(){cancelActualSelection();cancelPlanSelection();let x=dt(day),isToday=day===today(),dayLabel=isToday?'今日':'当日';let todayButton=$('todayButton');todayButton.textContent=isToday?'今天':'返回今天';todayButton.classList.toggle('active',isToday);todayButton.setAttribute('aria-label',isToday?'当前查看今天':'返回今天');$('dateLabel').textContent=`${x.getFullYear()}年${x.getMonth()+1}月${x.getDate()}日 · 周${'日一二三四五六'[x.getDay()]}`;$('dateInput').value=day;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(view!=='day'){$('center').innerHTML=calendarHTML(view,day);return}let old=$('axiswrap')?.scrollTop;let td=dayTasks(),done=td.filter(t=>t.done).length,plans=db.plans.filter(p=>p.date===day),pending=td.filter(t=>!t.done&&!plans.some(p=>p.taskId===t.id)).length;let lanes=mode==='compare'?['plan','actual']:[mode], labels=lanes.map(l=>`<span>${l==='plan'?'计划':'实际'}</span>`).join('');let ticks=Array.from({length:25},(_,i)=>`<div class="tick" style="top:${i*48-7}px">${i===24?'00:00':pad(i)+':00'}</div>`).join('');let current=new Date(),now=current.getHours()*60+current.getMinutes();$('center').innerHTML=`<div class="headrow" style="justify-content:space-between;margin-bottom:10px"><div class="seg">${[['plan','计划'],['actual','实际'],['compare','左右对照']].map(([v,l])=>`<button class="${mode===v?'active':''}" onclick="setMode('${v}')">${l}</button>`).join('')}</div><div class="headrow" style="gap:6px">${mode!=='actual'?`<button class="small ${planSelectMode?'active':''}" aria-pressed="${planSelectMode}" onclick="togglePlanSelectMode()" title="开启后拖动框选计划，松开即执行">${planSelectMode?'退出框选':'框选执行'}</button>`:''}<button class="small" onclick="repairRetrospectiveActual()" title="通过现有 V0.4 同步读取已授权回溯排程并补齐本地实际记录">补齐回溯实际</button><button class="small" onclick="confirmPlanExecution()" title="将当前日期已结束的计划确认为实际执行" ${plans.length?'':'disabled'}>完全执行</button><button class="small" onclick="editPlan()">＋ 安排时间</button></div></div><div class="split"><div><div class="axisHead"><span></span><div style="display:grid;grid-template-columns:repeat(${lanes.length},1fr)">${labels}</div></div><div class="axiswrap${axisHeight===null?'':' axis-custom-height'}" id="axiswrap"${axisHeight===null?'':` style="height:${axisHeight}px"`}><div class="timegrid" id="timegrid">${ticks}${lanes.map((l,i)=>`<div class="lane${l==='plan'&&planSelectMode?' plan-select-mode':''}" style="left:${i*100/lanes.length}%;width:${100/lanes.length}%" ${l==='plan'? 'data-plan-lane onpointerdown="beginPlanSelection(event,this)" ondragover="event.preventDefault();this.classList.add(\'dragover\')" ondragleave="this.classList.remove(\'dragover\')" ondrop="dropTask(event,this)" ondblclick="blankPlan(event,this)"':'data-actual-lane onpointerdown="beginActualSelection(event,this)" ondragover="actualPlanDragOver(event,this)" ondragleave="actualPlanDragLeave(event,this)" ondrop="dropPlanAsActual(event,this)"'}>${l==='plan'?planBlocks(plans):actualBlocks(day)}</div>`).join('')}${day===today()?`<div class="nowline" style="top:${now*SCALE}px"></div>`:''}</div></div><div id="axisHeightGrip" class="axis-height-grip" role="separator" aria-orientation="horizontal" aria-label="调整时间轴高度" aria-valuemin="${AXIS_MIN}" aria-valuemax="${AXIS_MAX}" tabindex="0" title="上下拖动调整高度，双击恢复默认" onpointerdown="beginAxisResize(event)" onkeydown="axisResizeKey(event)" ondblclick="setAxisHeight(null)">拖动调整高度</div><div class="scrollnote">00:00 至次日 00:00 · ${planSelectMode&&mode!=='actual'?'在计划列按住鼠标框选，松开后直接执行。':'拖动左侧计划块可直接调整计划时间；拖到右侧已有无任务工作块时，沿用其时间与状态；原计划保留。'} 实际列支持框选状态。</div></div><div class="middleaside"><div class="sub"><h3>${dayLabel}概览</h3><div class="overview"><div class="stat">计划任务<b>${plans.filter(p=>!isOptionalTask(task(p.taskId)||{})).length}</b></div><div class="stat">已完成<b>${done}</b></div><div class="stat">待完成<b>${td.length-done}</b></div><div class="stat">待排程<b>${pending}</b></div></div></div><div class="sub"><div class="panelhead"><h3>${dayLabel}任务</h3><button class="small" onclick="editTask()">＋ 添加</button></div>${td.map(t=>taskHTML(t,0)).join('')||`<div class="empty">暂无${dayLabel}任务</div>`}</div>${dailyOptionalHTML()}<div class="sub"><h3>每日目标</h3>${['low','normal','high'].map((g,i)=>{let a=td.filter(t=>t.goal===g);return `<div class="goalrow"><span>${['保底','进度','高能量'][i]}</span><small>${a.filter(t=>t.done).length}/${a.length} 项 · ${fmt(a.reduce((s,t)=>s+t.estimate,0))}</small></div>`}).join('')}<small>目标预算可在设置中调整</small></div><div class="sub"><h3>${weekStart(day)===weekStart(today())?'本周':'所选周'}工作记录</h3><strong style="font-size:19px">${fmt(rangeMins(weekStart(day),addDay(weekStart(day),6)))}</strong>${weekBars(day)}</div></div></div>`;if(old!=null)$('axiswrap').scrollTop=old;else $('axiswrap').scrollTop=day===today()?Math.max(0,(now-180)*SCALE):288;const grip=$('axisHeightGrip');if(grip)grip.setAttribute('aria-valuenow',String(Math.round($('axiswrap').getBoundingClientRect().height)));}
+function setView(v){view=v;renderCenter()}function setMode(m){mode=m;renderCenter()}function setDay(d){if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;day=d;render()}function shiftDay(n){setDay(addDay(day,n*(view==='week'?7:view==='month'?30:1)))}function goToday(){setDay(today())}function renderCenter(){cancelActualSelection();cancelPlanSelection();let x=dt(day),isToday=day===today(),dayLabel=isToday?'今日':'当日';let todayButton=$('todayButton');todayButton.textContent=isToday?'今天':'返回今天';todayButton.classList.toggle('active',isToday);todayButton.setAttribute('aria-label',isToday?'当前查看今天':'返回今天');$('dateLabel').textContent=`${x.getFullYear()}年${x.getMonth()+1}月${x.getDate()}日 · 周${'日一二三四五六'[x.getDay()]}`;$('dateInput').value=day;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(view!=='day'){$('center').innerHTML=calendarHTML(view,day);return}let old=$('axiswrap')?.scrollTop;let td=dayTasks(),done=td.filter(t=>t.done).length,plans=db.plans.filter(p=>p.date===day),pending=td.filter(t=>!t.done&&!plans.some(p=>p.taskId===t.id)).length;let lanes=mode==='compare'?['plan','actual']:[mode], labels=lanes.map(l=>`<span>${l==='plan'?'计划':'实际'}</span>`).join('');let ticks=Array.from({length:25},(_,i)=>`<div class="tick" style="top:${i*48-7}px">${i===24?'00:00':pad(i)+':00'}</div>`).join('');let current=new Date(),now=current.getHours()*60+current.getMinutes();$('center').innerHTML=`<div class="headrow" style="justify-content:space-between;margin-bottom:10px"><div class="seg">${[['plan','计划'],['actual','实际'],['compare','左右对照']].map(([v,l])=>`<button class="${mode===v?'active':''}" onclick="setMode('${v}')">${l}</button>`).join('')}</div><div class="headrow" style="gap:6px">${mode!=='actual'?`<button class="small ${planSelectMode?'active':''}" aria-pressed="${planSelectMode}" onclick="togglePlanSelectMode()" title="开启后拖动框选计划，松开即执行">${planSelectMode?'退出框选':'框选执行'}</button>`:''}<button class="small" onclick="undoLastAction()" title="Ctrl+Z 撤销上一次编辑">↶ 撤销</button><button class="small" onclick="redoLastAction()" title="Ctrl+Y 或 Ctrl+Shift+Z 重做">↷ 重做</button><button class="small" onclick="repairRetrospectiveActual()" title="通过现有 V0.4 同步读取已授权回溯排程并补齐本地实际记录">补齐回溯实际</button><button class="small" onclick="confirmPlanExecution()" title="将当前日期已结束的计划确认为实际执行" ${plans.length?'':'disabled'}>完全执行</button><button class="small" onclick="editPlan()">＋ 安排时间</button></div></div><div class="split"><div><div class="axisHead"><span></span><div style="display:grid;grid-template-columns:repeat(${lanes.length},1fr)">${labels}</div></div><div class="axiswrap${axisHeight===null?'':' axis-custom-height'}" id="axiswrap"${axisHeight===null?'':` style="height:${axisHeight}px"`}><div class="timegrid" id="timegrid">${ticks}${lanes.map((l,i)=>`<div class="lane${l==='plan'&&planSelectMode?' plan-select-mode':''}" style="left:${i*100/lanes.length}%;width:${100/lanes.length}%" ${l==='plan'? 'data-plan-lane onpointerdown="beginPlanSelection(event,this)" ondragover="event.preventDefault();this.classList.add(\'dragover\')" ondragleave="this.classList.remove(\'dragover\')" ondrop="dropTask(event,this)" ondblclick="blankPlan(event,this)"':'data-actual-lane onpointerdown="beginActualSelection(event,this)" ondragover="actualPlanDragOver(event,this)" ondragleave="actualPlanDragLeave(event,this)" ondrop="dropPlanAsActual(event,this)"'}>${l==='plan'?planBlocks(plans):actualBlocks(day)}</div>`).join('')}${day===today()?`<div class="nowline" style="top:${now*SCALE}px"></div>`:''}</div></div><div id="axisHeightGrip" class="axis-height-grip" role="separator" aria-orientation="horizontal" aria-label="调整时间轴高度" aria-valuemin="${AXIS_MIN}" aria-valuemax="${AXIS_MAX}" tabindex="0" title="上下拖动调整高度，双击恢复默认" onpointerdown="beginAxisResize(event)" onkeydown="axisResizeKey(event)" ondblclick="setAxisHeight(null)">拖动调整高度</div><div class="scrollnote">00:00 至次日 00:00 · ${planSelectMode&&mode!=='actual'?'在计划列按住鼠标框选，松开后直接执行。':'拖动左侧计划块可直接调整计划时间；拖到右侧已有无任务工作块时，沿用其时间与状态；原计划保留。'} 实际列支持框选状态。</div></div><div class="middleaside"><div class="sub"><h3>${dayLabel}概览</h3><div class="overview"><div class="stat">计划任务<b>${plans.filter(p=>!isOptionalTask(task(p.taskId)||{})).length}</b></div><div class="stat">已完成<b>${done}</b></div><div class="stat">待完成<b>${td.length-done}</b></div><div class="stat">待排程<b>${pending}</b></div></div></div><div class="sub"><div class="panelhead"><h3>${dayLabel}任务</h3><button class="small" onclick="editTask()">＋ 添加</button></div>${td.map(t=>taskHTML(t,0)).join('')||`<div class="empty">暂无${dayLabel}任务</div>`}</div>${dailyOptionalHTML()}<div class="sub"><h3>每日目标</h3>${['low','normal','high'].map((g,i)=>{let a=td.filter(t=>t.goal===g);return `<div class="goalrow"><span>${['保底','进度','高能量'][i]}</span><small>${a.filter(t=>t.done).length}/${a.length} 项 · ${fmt(a.reduce((s,t)=>s+t.estimate,0))}</small></div>`}).join('')}<small>目标预算可在设置中调整</small></div><div class="sub"><h3>${weekStart(day)===weekStart(today())?'本周':'所选周'}工作记录</h3><strong style="font-size:19px">${fmt(rangeMins(weekStart(day),addDay(weekStart(day),6)))}</strong>${weekBars(day)}</div></div></div>`;if(old!=null)$('axiswrap').scrollTop=old;else $('axiswrap').scrollTop=day===today()?Math.max(0,(now-180)*SCALE):288;const grip=$('axisHeightGrip');if(grip)grip.setAttribute('aria-valuenow',String(Math.round($('axiswrap').getBoundingClientRect().height)));}
 
 let planSelectMode=false,planSelectionDrag=null;
 function togglePlanSelectMode(){planSelectMode=!planSelectMode;renderCenter()}
