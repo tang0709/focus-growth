@@ -107,7 +107,20 @@
   finally{busy=false;show();}
  }
  function dirty(){if(applying)return;try{assertFresh();queue();status=enabled?'同步中':session?'已暂停 · 本地更改已暂存':'未连接 · 本地更改已暂存';show();if(enabled){clearTimeout(timer);timer=setTimeout(()=>sync(),1500);}}catch(e){enabled=false;error=e.message;status='本地持久化失败或多标签冲突';show();}}
- window.FocusGrowthNotifyTaskChange=dirty;
+ 
+ window.FocusGrowthUndoCheck=(current,next)=>{
+  for(const col of Object.keys(fields)){
+   const after=new Set((next[col]||[]).map(r=>r.id));
+   const removed=(current[col]||[]).filter(r=>!after.has(r.id));
+   if(!removed.length)continue;
+   const known=new Set([...(meta.base[col]||[]),...(latestRemote?.[col]||[])].map(r=>r.id));
+   if(removed.some(row=>known.has(row.id))||busy||meta.pending){
+    return '撤销会删除已同步或正在同步的项目、任务或排程，受正式同步的禁止自动删除规则保护。此操作未执行';
+   }
+  }
+  return null;
+ };
+window.FocusGrowthNotifyTaskChange=dirty;
  function track(fn){return function(...args){const before=stable(project());const result=fn.apply(this,args);if(before!==stable(project()))dirty();return result;};}
  for(const name of ['saveTask','saveAssignment','completeTask','confirmPlanExecution','beginTaskTimer','pauseTaskTimer','stopTaskTimer','saveRecoveredTimer','deleteTask','savePlan','deletePlan','dropPlanAsActual','dropTask','saveProject','importText','resetData']){
   // These legacy functions are explicitly global declarations in the single-file UI.
