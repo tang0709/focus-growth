@@ -1,3 +1,9 @@
+## 2026-11-25 · V0.4 Outlook-inspired appearance
+
+- Updated `index.html` with a Fluent-inspired blue header, neutral surfaces, compact controls and calendar styling. Preserved four customizable state colors and neutral planned blocks.
+- Updated legacy default background and accent values; other custom color values remain intact. No task, activity, sync, storage key or timeline gesture logic intentionally changed.
+- Source readback verified visual selectors, state colors, default theme and storage key. Live Pages rendering and real browser interaction remain unverified.
+
 # Changelog
 
 ## V0.4 — Recover automatic sync after temporary request failures (2026-11-25)
