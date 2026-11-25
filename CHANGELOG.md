@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4 — Actual record delete and edit button repair
+- Fix actual-work editor Save and Delete buttons whose inline onclick values contained unescaped JSON double quotes, truncating the HTML event handler and making buttons unresponsive. HTML-escape the quoted date argument so the DOM decodes it to an executable JavaScript string.
+- Replace browser-native confirm on record deletion with a visible inline confirmation panel, cancel action, and focus/scroll for accessibility. Do not delete anything on the initial click.
+- On confirmation, verify original activity fragments and boundaries, require local storage freshness, validate the deletion draft, retain the removed fragments in browser-local deletion history, recalculate associated task actual duration while preserving completion and plan data, and verify persisted output before reporting success.
+- Guard previously deleted task intervals against automatic completion-timeline recovery. Scoped task-duration changes may sync through the existing connector, while raw activity and deletion history remain local.
+- Confirmed fifteen isolated deletion-draft assertions, nine confirmation/cancel/persistence simulations, JavaScript syntax, and HTML attribute decoding for both buttons. Live browser acceptance pending. No user task records were deleted during development.
+
 ## V0.4: Repeated plan assignment and actual editor reliability
 - A plan already recorded once can be explicitly reassigned to a different unassigned actual block. The previous task association is cleared but its original activity, date, duration and state remain, so work minutes are not duplicated.
 - Dragging onto a nearby unassigned block has a conservative six-minute snap range. Other tasks' associations are not overwritten.
