@@ -1,5 +1,10 @@
 # Changelog
 
+## V0.4 — Explicit retrospective actual repair
+- Add a workbench button "补齐回溯实际" that invokes the existing authorized V0.4 sync and then imports any newly arrived private retrospective estimate plans into browser-local actual records.
+- Report how many tagged plans are present, already imported, recorded locally, and skipped because of existing overlapping activity. If private plans are absent locally, show a clear sync/revision/conflict diagnostic instead of falsely reporting success.
+- Preserve the native sync authorization gate, read-only states, existing activity, import idempotency, private data boundaries and historic schedules. The six real private plans were re-tested with an isolated local-state simulation: 270 estimated minutes on November 23 and 180 on November 24, 450 total, with no duplicates on a second import. This does not verify a user's live browser state.
+
 ## V0.4 — Private retrospective timeline estimates
 - Add a generic, private-data-triggered retrospective estimator for explicitly tagged completed-task plans. The public source never contains personal task names or historical dates; private `sync/state.json` holds the task and plan data.
 - On a verified incoming sync, materialize only tagged plans into browser-local actual timeline records, preserving all existing activity. Use `source=retrospective-estimate`, mark the blocks as approximate with dashed borders, retain either neutral gray or the user-selected focus quadrant, and record idempotent local import history and skipped overlaps.
