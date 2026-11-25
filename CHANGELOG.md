@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4: Repeated plan assignment and actual editor reliability
+- A plan already recorded once can be explicitly reassigned to a different unassigned actual block. The previous task association is cleared but its original activity, date, duration and state remain, so work minutes are not duplicated.
+- Dragging onto a nearby unassigned block has a conservative six-minute snap range. Other tasks' associations are not overwritten.
+- Actual-block pointer gestures capture on the edited block, and live timeline redraw is deferred during a drag.
+- Editing actual start, end, task or quadrant now verifies browser persistence before reporting success. Validation and save errors remain visible in the editor.
+- Syntax and isolated regression simulations passed. Live browser acceptance is still pending. Private task and activity records were not changed in this code fix.
+
 ## V0.4 — Drop onto unassigned actual work and move planned blocks
 - Fix plan-to-actual dragging to resolve its target from the pointer's exact time against browser-local activity, not from the HTML drag/drop event target. Dropping onto an unassigned input-backed or manually adjusted block now assigns the planned task to that existing continuous block, inherits its entire time and quadrant state, and adds no new work minutes. Existing task associations remain protected.
 - Use pointer-based dragging for the body of each plan block. Move up or down within the plan lane to reschedule its start while retaining duration, or move across to the actual lane to confirm work. A short click retains plan editing; existing plan selection mode and edge resizing remain available.
