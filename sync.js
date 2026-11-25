@@ -70,6 +70,7 @@
  async function restoreDevice(){if(!window.FocusGrowthDeviceSession)return false;if(reconnecting)return reconnecting;reconnecting=(async()=>{const result=await FocusGrowthDeviceSession.recover(rawRequest);if(!result)return false;session=result.session;const raw=browserBackup();const attached=await rawRequest('/v1/attach',{clientId,raw,source:{origin:location.origin,pathname:location.pathname,storageKey:STORE}});if(attached.backup?.restoreTest!=='PASS'||attached.backup.encrypted!==true)throw Error('restore_backup_not_verified');enabled=attached.enabled===true&&attached.authorized===true;status=enabled?'设备会话已安全恢复':'已恢复连接 · 服务暂停';return true;})().finally(()=>{reconnecting=null;});return reconnecting;}
  async function request(path,body){try{return await rawRequest(path,body);}catch(e){if(e.message==='unauthorized'&&!path.startsWith('/v1/session/')&&await restoreDevice())return rawRequest(path,body);throw e;}}
  async function applyIncoming(remote) {
+  if(window.FocusGrowthTimelineGesture?.isActive?.()){status='等待时间轴拖动结束';return false}
   for(let attempt=0;attempt<2;attempt++){
    assertFresh();const raw=JSON.stringify(db),local=project(),result=merge(meta.base,local,remote);
    if(result.issues.length){conflicts=result.issues;status='冲突';return false;}
@@ -92,6 +93,7 @@
   meta.pending={base:copy(meta.base),desired,operationId:meta.next?.operationId||crypto.randomUUID()};meta.next=null;persist();
  }
  async function sync(manual=false){
+  if(window.FocusGrowthTimelineGesture?.isActive?.())return;
   if(!session||busy||stale||metaCorrupt||(!manual&&Date.now()<nextAt))return;
   if(!enabled){if(!TEST)await fgSyncReadOnly();return;}const startedGeneration=generation;
   busy=true;status='同步中';error='';show();
@@ -194,6 +196,9 @@ window.FocusGrowthNotifyTaskChange=dirty;
     added++;
    }
    if(added){
+    // Never replace the lane DOM while an actual or planned block is being dragged.
+    // The native evidence stays available to fetch on the next poll.
+    if(window.FocusGrowthTimelineGesture?.isActive?.())return;
     assertFresh();const error=validate(next);if(error)throw Error('activity_validation_'+error);
     db.activity=next.activity;render(); // Activity is browser-only and outside sync projection.
    }
