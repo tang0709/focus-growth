@@ -34,7 +34,7 @@ const UNDO_LIMIT=20,undoStack=[],redoStack=[];
 let undoGesture=null,undoApplying=false,undoMuted=0;
 function undoSnapshot(){
  const out={};
- for(const key of UNDO_FIELDS)out[key]=key==='archiveIds'?[...archivedTaskIds].sort():clone(db[key]);
+ for(const key of UNDO_FIELDS)out[key]=key==='archiveIds'?[...archivedTaskIds].sort():db[key]===undefined?undefined:clone(db[key]);
  return out;
 }
 function undoCapture(){
@@ -62,7 +62,7 @@ function undoCommit(){
  if(timerChanged||timeChanged)return;
  if(!keys.some(k=>k!=='history'))return;
  const entry={keys,before:{},after:{}};
- for(const k of keys){entry.before[k]=clone(before[k]);entry.after[k]=clone(after[k])}
+ for(const k of keys){entry.before[k]=before[k]===undefined?undefined:clone(before[k]);entry.after[k]=after[k]===undefined?undefined:clone(after[k])}
  undoStack.push(entry);if(undoStack.length>UNDO_LIMIT)undoStack.shift();
  redoStack.length=0;
 }
@@ -76,7 +76,7 @@ function undoRestore(entry,to){
  }
  const restored=to==='before'?entry.before:entry.after;
  const next=clone(db);
- for(const key of entry.keys)if(key!=='archiveIds')next[key]=clone(restored[key]);
+ for(const key of entry.keys)if(key!=='archiveIds'){if(restored[key]===undefined)delete next[key];else next[key]=clone(restored[key])}
  if((db.taskTimer||db.workSession)&&entry.keys.some(k=>['tasks','activity','history'].includes(k))){
   toast('正在计时或监测。请先暂停或结束，再撤销涉及任务和实际工时的操作');return false
  }
@@ -217,16 +217,16 @@ function reconcileTaskArchive(){
 function archiveCompletedTasks(){
  let list=archiveCandidates();if(!list.length)return toast('暂无可归档的已完成任务');
  let next=new Set(archivedTaskIds);for(let t of list)next.add(t.id);
- if(!persistArchive(next))return;renderRight();toast('已归档 '+list.length+' 项任务，历史记录保留')
+ if(!persistArchive(next))return;undoCommit();renderRight();toast('已归档 '+list.length+' 项任务，历史记录保留')
 }
 function restoreArchivedTask(id){
  let t=task(id);if(!t||!isArchivedTask(t))return;let next=new Set(archivedTaskIds),seen=new Set();
  while(t&&!seen.has(t.id)){seen.add(t.id);next.delete(t.id);t=task(t.parentId)}
- if(!persistArchive(next))return;renderRight();renderArchiveList();toast('已恢复到任务拆解，完成状态不变')
+ if(!persistArchive(next))return;undoCommit();renderRight();renderArchiveList();toast('已恢复到任务拆解，完成状态不变')
 }
 function restoreAllArchivedTasks(){
  if(!archivedTasks().length)return;
- if(!persistArchive(new Set()))return;renderRight();renderArchiveList();toast('全部归档任务已恢复')
+ if(!persistArchive(new Set()))return;undoCommit();renderRight();renderArchiveList();toast('全部归档任务已恢复')
 }
 function archiveListHTML(){
  let all=archivedTasks(),q=archiveSearch.trim().toLowerCase(),rows=all.filter(t=>!q||(t.name+' '+(project(t.projectId)?.name||'独立任务')).toLowerCase().includes(q));
