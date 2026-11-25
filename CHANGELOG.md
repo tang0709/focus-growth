@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4 — Prevent active sync from interrupting actual-block drags
+- Fix a second, independently verified cause of failed actual-time adjustments while the work monitor is active. Native desktop activity polling could call full `render()` during a pointer gesture, replacing the dragged DOM element and interrupting pointer capture even when time validation was correct. Incoming official sync updates could also re-render during a drag.
+- Expose a short-lived timeline gesture lock covering actual-block movement, plan-block movement and multi-selection. Defer desktop activity imports and incoming sync UI application while locked. Polling and authorized synchronization resume after the gesture, and activity evidence is not discarded or uploaded outside its existing local-only privacy scope.
+- Keep the revised future-time policy: moving an existing recorded interval entirely earlier, shortening it or editing its state does not create future work credit, even if the original input-backed ten-minute slot crosses the present time.
+- Include original/proposed ranges and local current time in blocked-move toasts. Show an explanatory toast if a pointer gesture is interrupted, and add a visible "拖动保护修复版" marker to the timeline help text to distinguish the new deployment. Bust the cached sync script URL.
+- Verified the active-monitor/desktop-poll/upward-drag/retry sequence with a simulated full gesture, native evidence deferred then imported, plus six focused future-time cases and JavaScript syntax checks. Real browser acceptance remains pending.
+
 ## V0.4 — Fix false future-time errors when moving existing actual blocks
 - Fix the actual-time editor rejecting upward repositioning, shortening, or state-only changes when an already recorded input-backed ten-minute slot ends slightly later than the current clock time.
 - For edits of an existing actual block on the current date, validate *only newly introduced future minutes*: retain or shorten an existing slot's future-facing tail if the revised end is no later than its original end; reject any extension that goes beyond both the existing end and current time. Future calendar dates remain blocked.
