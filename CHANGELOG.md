@@ -1,5 +1,9 @@
 # Changelog
 
+## V0.4 — Hide empty task groups
+- Hide project and independent-task headers whenever the current task tree contains no visible descendants, including after all child tasks have been archived or filtered out by search. Collapsed project headings remain visible if any matching, unarchived child exists. No tasks, archives, projects, timers, or sync records are deleted.
+- JavaScript syntax and eight isolated task-tree regression checks pass. Live browser acceptance remains pending.
+
 ## V0.4 — Explicit retrospective actual repair
 - Add a workbench button "补齐回溯实际" that invokes the existing authorized V0.4 sync and then imports any newly arrived private retrospective estimate plans into browser-local actual records.
 - Report how many tagged plans are present, already imported, recorded locally, and skipped because of existing overlapping activity. If private plans are absent locally, show a clear sync/revision/conflict diagnostic instead of falsely reporting success.
