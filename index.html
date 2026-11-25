@@ -648,6 +648,40 @@ function assignPlanToExistingActualDraft(base,planId,date,start,end,clock){
  const total=sumActivity(next.activity.filter(a=>a.taskId===t.id));if(total>0)t.actual=Math.max(Number.isFinite(t.actual)?t.actual:0,total);
  return {next,addedMinutes:0,assignedMinutes:assigned,actualMinutes:end-start,completed,state};
 }
+
+function editActualIntervalDraft(base,date,start,end,nextStart,nextEnd,clock,changeTaskId,changeState){
+ if(![start,end,nextStart,nextEnd].every(Number.isInteger)||start<0||end>1440||start>=end||nextStart<0||nextEnd>1440||nextStart>=nextEnd)return {error:'起止时间无效'};
+ if(date>dateKey(clock)||(date===dateKey(clock)&&nextEnd>clock.getHours()*60+clock.getMinutes()))return {error:'实际工作时段不能延伸到未来'};
+ const rows=base.activity.filter(a=>a.date===date&&activityStart(a)>=start&&activityEnd(a)<=end).sort((a,b)=>activityStart(a)-activityStart(b));
+ if(!rows.length||activityStart(rows[0])!==start||activityEnd(rows[rows.length-1])!==end)return {error:'原始记录已变化，请刷新后重试'};
+ let pos=start;for(const a of rows){if(activityStart(a)!==pos)return {error:'工作块不连续'};pos=activityEnd(a)}
+ if(changeTaskId!==undefined&&changeTaskId!==null&&!base.tasks.some(t=>t.id===changeTaskId))return {error:'任务不存在'};
+ if(changeState!==undefined&&!Object.hasOwn(zones,changeState))return {error:'工作状态无效'};
+ const outside=base.activity.filter(a=>a.date!==date||activityEnd(a)<=start||activityStart(a)>=end);
+ if(outside.some(a=>a.date===date&&activityStart(a)<nextEnd&&activityEnd(a)>nextStart))return {error:'目标时段已有其他实际记录，未修改'};
+ const next=clone(base),keys=new Set(rows.map(a=>a.date+':'+activityStart(a)+':'+activityEnd(a)));
+ next.activity=next.activity.filter(a=>!keys.has(a.date+':'+activityStart(a)+':'+activityEnd(a)));
+ const taskId=changeTaskId===undefined?(rows[0].taskId||null):(changeTaskId||null);
+ const state=changeState===undefined?(rows[0].state||'unknown'):changeState;
+ const originalSource=rows[0].originalSource||rows[0].source;
+ const planId=rows[0].assignedFromPlanId||rows[0].planId||null;
+ const modified=nextStart!==start||nextEnd!==end;
+ for(let m=nextStart;m<nextEnd;){
+  const hi=Math.min(nextEnd,(Math.floor(m/10)+1)*10);
+  const row={...rows[0],date,slot:Math.floor(m/10),startMinute:m,endMinute:hi,taskId,state};
+  if(modified){row.source='manual-adjustment';row.originalSource=originalSource;row.manuallyAdjusted=true}
+  if(planId)row.assignedFromPlanId=planId;
+  next.activity.push(row);m=hi;
+ }
+ next.history.push({type:'actual-interval-adjusted',date,before:{start,end,taskId:rows[0].taskId||null,state:rows[0].state||'unknown'},after:{start:nextStart,end:nextEnd,taskId,state},time:clock.toISOString()});
+ const affected=new Set([...rows.map(a=>a.taskId).filter(Boolean),taskId].filter(Boolean));
+ for(const id of affected){
+  const t=next.tasks.find(t=>t.id===id);if(!t)continue;
+  const before=sumActivity(base.activity.filter(a=>a.taskId===id)),after=sumActivity(next.activity.filter(a=>a.taskId===id)),previous=Number.isFinite(t.actual)?t.actual:0;
+  t.actual=Math.max(0,after,previous+after-before);
+ }
+ return {next,minutes:nextEnd-nextStart,taskId,state};
+}
 function actualPlanDropDraft(base,planId,date,start,now){
  const p=base.plans.find(x=>x.id===planId),t=p&&base.tasks.find(x=>x.id===p.taskId);
  if(!p||!t||p.date!==date||!Number.isInteger(start)||start<0||start+p.duration>1440||!Number.isFinite(now?.getTime?.()))return {error:'排程或日期无效'};
