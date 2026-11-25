@@ -12,7 +12,7 @@
 .lane.plan-select-mode,.lane.plan-select-mode .block{cursor:crosshair;user-select:none}.plan-selection-box{position:absolute;z-index:8;pointer-events:none;background:#607fe024;border:1px solid #607fe0;border-radius:2px}.plan-select-mode .plan-multi-selected{outline:2px solid var(--accent);outline-offset:-2px}.headrow>button[aria-pressed=true]{color:#4264d0;background:#e9effe;border-color:#b8c6ee}
 .actual-task-title{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.actual-task-detail{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .block.actual.retrospective-estimate{border:1px dashed #aeb4bd;border-radius:5px;padding:1px 4px}.block.actual.unknown.retrospective-estimate{background:#f4f4f5;color:#52565d}
-.lane.actual-drop-target{outline:2px dashed #8b9bb7;outline-offset:-3px;background:#eef2f8!important}.lane.actual-drop-target::after{content:'松开后登记为实际工作 · 保留原计划';position:sticky;z-index:10;display:block;top:5px;margin:5px;padding:7px;background:#f5f7fc;border:1px dashed #aeb9c9;border-radius:5px;color:#53637d;pointer-events:none;text-align:center;font-size:11px}
+.lane.actual-drop-target{outline:2px dashed #8b9bb7;outline-offset:-3px;background:#eef2f8!important}.lane.actual-drop-target::after{content:'拖到已有工作块：沿用时间和状态；拖到空白：新建记录';position:sticky;z-index:10;display:block;top:5px;margin:5px;padding:7px;background:#f5f7fc;border:1px dashed #aeb9c9;border-radius:5px;color:#53637d;pointer-events:none;text-align:center;font-size:11px}
 .block.actual{touch-action:none}.block.actual.actual-moving{outline:2px dashed #536c9a;outline-offset:1px;z-index:9;opacity:.85}.block.actual.manual-adjustment{border:1px dashed #8d93a0}.block.actual .actual-edge{position:absolute;left:24px;right:8px;height:5px;z-index:4;opacity:0;cursor:ns-resize;background:#8c95a5aa;border-radius:3px}.block.actual .actual-edge-start{top:0}.block.actual .actual-edge-end{bottom:0}.block.actual:hover .actual-edge,.block.actual:focus-within .actual-edge{opacity:.9}.block.actual.actual-drop-hover{outline:3px solid var(--accent);outline-offset:-3px}.block.actual.actual-moving .actual-edge{opacity:0}
 </style></head><body><header class="top"><div class="brand"><div class="logo"></div><div><b>专注 · 成长</b><small>先定位此刻，再决定下一步</small></div></div><nav class="nav" id="nav"><button data-page="work" class="active">⌂ 工作台</button><button data-page="projects">▤ 长期任务</button><button data-page="stats">▥ 统计分析</button><button data-page="settings">⚙ 设置</button></nav><div class="tools"><span id="demoBadge" class="pill"></span><button onclick="openSync()">对话更新</button><button onclick="toggleAI()">AI 助手</button></div></header><main class="wrap"><div id="metrics" class="metrics"></div><div class="main" id="work"><aside id="left" class="panel left"><div class="panelhead"><h2>启动状态</h2><button class="small" id="collapse" onclick="toggleLeft()">收起</button></div><div class="leftbody" id="leftbody"></div></aside><section class="panel"><div class="panelhead"><div class="headrow"><h2 id="dateLabel"></h2><button class="small" onclick="shiftDay(-1)">‹</button><button class="small" id="todayButton" onclick="goToday()">今天</button><button class="small" onclick="shiftDay(1)">›</button><input type="date" id="dateInput" style="width:132px;font-size:12px;padding:5px" onchange="setDay(this.value)"></div><div class="seg" id="viewButtons"><button onclick="setView('day')" data-view="day">时间轴</button><button onclick="setView('week')" data-view="week">周</button><button onclick="setView('month')" data-view="month">月</button></div></div><div id="taskTimerPanel"></div><div id="center"></div></section><aside class="panel right" id="right"></aside></div><section class="panel fullview" id="projects"></section><section class="panel fullview" id="stats"></section><section class="panel fullview" id="settings"></section></main><footer class="footer"><div><span class="dot"></span><b id="footerState">未选择状态</b>　<span id="footerTime"></span></div><div id="footerTimer"></div><span class="muted footnotice">原型：仅检测本网页内活动，未接入 Windows 后台监测</span><div><button class="small" onclick="recordManual()">补录工作</button> <button class="small" onclick="openSync()">数据同步</button></div></footer><div id="modalRoot"></div><div id="aiRoot"></div><div id="toastRoot"></div><input type="file" id="importFile" accept=".json,application/json" hidden><script>
 'use strict';
@@ -574,6 +574,7 @@ function beginActualMove(e,lane,block){
   cleanup();
   if(day!==date)return;
   if(!changed){if(kind==='move')assignActivity(date,start,end);return}
+  if(lastStart===start&&lastEnd===end){renderCenter();return}
   const result=editActualIntervalDraft(db,date,start,end,lastStart,lastEnd,new Date());
   if(result.error){renderCenter();toast(result.error);return}
   const error=validate(result.next);if(error){renderCenter();toast('未修改：'+error);return}
@@ -725,7 +726,7 @@ function editActualIntervalDraft(base,date,start,end,nextStart,nextEnd,clock,cha
   if(planId)row.assignedFromPlanId=planId;
   next.activity.push(row);m=hi;
  }
- next.history.push({type:'actual-interval-adjusted',date,before:{start,end,taskId:rows[0].taskId||null,state:rows[0].state||'unknown'},after:{start:nextStart,end:nextEnd,taskId,state},time:clock.toISOString()});
+ next.history.push({type:'actual-interval-adjusted',date,before:{start,end,taskId:rows[0].taskId||null,state:rows[0].state||'unknown'},originalRows:clone(rows),after:{start:nextStart,end:nextEnd,taskId,state},time:clock.toISOString()});
  const affected=new Set([...rows.map(a=>a.taskId).filter(Boolean),taskId].filter(Boolean));
  for(const id of affected){
   const t=next.tasks.find(t=>t.id===id);if(!t)continue;
@@ -801,7 +802,7 @@ function saveAssignment(d,a,b){
  if(result.error)return toast(result.error);
  const error=validate(result.next);if(error)return toast('未修改：'+error);
  try{window.FocusGrowthStorageGuard?.before()}catch{return toast('数据已变化，请刷新后重试')}
- db=result.next;closeModal();render();window.FocusGrowthNotifyTaskChange?.();
+ db=result.next;closeModal();render();
  toast('已保存实际工作 '+hm(start)+'–'+hm(end)+'，'+fmt(result.minutes))
 }
 function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
