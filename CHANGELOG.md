@@ -1,5 +1,11 @@
 # Changelog
 
+## V0.4 — Fix false future-time errors when moving existing actual blocks
+- Fix the actual-time editor rejecting upward repositioning, shortening, or state-only changes when an already recorded input-backed ten-minute slot ends slightly later than the current clock time.
+- For edits of an existing actual block on the current date, validate *only newly introduced future minutes*: retain or shorten an existing slot's future-facing tail if the revised end is no later than its original end; reject any extension that goes beyond both the existing end and current time. Future calendar dates remain blocked.
+- This does not grant an additional ten minutes of future activity credit and does not change how keyboard/mouse activity is grouped into ten-minute intervals. Existing overlap protection, task attribution, duration updates, and audit-history behavior remain intact.
+- Confirmed syntax, 17 focused time-edit/overlap/future-date tests and one simulated upward mouse drag against a 04:20–04:30 slot at 04:25. Real-browser acceptance remains pending.
+
 ## V0.4 — Ctrl+Z undo and redo
 - Add Ctrl+Z (Cmd+Z on macOS) to undo the most recent explicit workspace edit, with a bounded stack of up to 20 operations. Add Ctrl+Y / Ctrl+Shift+Z for redo and visible Undo/Redo controls in the day timeline. Preserve native text-field undo while a form input or editable control has focus.
 - Capture user actions before pointer or keyboard activation and commit a history entry only after the revised state is saved. Covered collections include tasks, projects, plans, actual activity, notes, goals, theme, quadrants and archived-task visibility. The undo record stays in this browser tab memory rather than introducing another persistent copy of private records.
