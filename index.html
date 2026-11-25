@@ -1023,6 +1023,8 @@ function deleteActivity(d,a,b){
  actions.parentNode.insertBefore(panel,actions);
  panel.querySelector('#confirmActualDeleteButton').addEventListener('click',()=>confirmDeleteActivity());
  panel.querySelector('#cancelActualDeleteButton').addEventListener('click',()=>cancelDeleteActivity());
+ panel.scrollIntoView?.({block:'nearest'});
+ panel.querySelector('#confirmActualDeleteButton')?.focus?.();
  const button=$('actualDeleteButton');if(button){button.disabled=true;button.setAttribute('aria-expanded','true')}
 }
 function confirmDeleteActivity(){
