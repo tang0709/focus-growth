@@ -9,12 +9,13 @@ namespace FocusGrowth {
   [StructLayout(LayoutKind.Sequential)]struct LastInputInfo {public uint cbSize;public uint dwTime;}
   [DllImport("user32.dll",SetLastError=true)]static extern bool GetLastInputInfo(ref LastInputInfo info);
   readonly Disk disk;readonly object gate=new object();readonly HashSet<string> slots=new HashSet<string>();
-  readonly Timer timer;bool armed;DateTime expiresUtc;bool stopped;
+  readonly Timer timer;bool armed;DateTime expiresUtc,armedAtUtc;bool stopped;
   public DesktopActivity(Disk store){
    disk=store;var data=disk.Load("activity-evidence");
    if(data!=null){
     armed=J.Get(data,"armed") is bool&&(bool)data["armed"];
     DateTime parsed;if(DateTime.TryParse(J.Str(J.Get(data,"expiresUtc")),null,System.Globalization.DateTimeStyles.RoundtripKind,out parsed))expiresUtc=parsed.ToUniversalTime();
+    if(DateTime.TryParse(J.Str(J.Get(data,"armedAtUtc")),null,System.Globalization.DateTimeStyles.RoundtripKind,out parsed))armedAtUtc=parsed.ToUniversalTime();
     object rows=J.Get(data,"slots");
     if(rows!=null)foreach(var value in J.Arr(rows)){string key=J.Str(value);if(ValidKey(key))slots.Add(key);}
    }
@@ -28,7 +29,7 @@ namespace FocusGrowth {
       &&Int32.TryParse(key.Substring(11),out slot)&&slot>=0&&slot<144;
   }
   void Persist(){
-   var saved=new Dictionary<string,object>{{"armed",armed},{"expiresUtc",expiresUtc.ToString("o")},{"slots",slots.OrderBy(x=>x).Cast<object>().ToArray()}};
+   var saved=new Dictionary<string,object>{{"armed",armed},{"expiresUtc",expiresUtc.ToString("o")},{"armedAtUtc",armedAtUtc.ToString("o")},{"slots",slots.OrderBy(x=>x).Cast<object>().ToArray()}};
    disk.Save("activity-evidence",saved);
   }
   void Sample(){
@@ -40,7 +41,9 @@ namespace FocusGrowth {
     uint idle=unchecked((uint)Environment.TickCount-info.dwTime);
     // Poll every 5 seconds. An input within the previous 7 seconds counts once in its 10-minute slot.
     if(idle>7000)return;
-    var observed=DateTime.Now.AddMilliseconds(-idle);
+    var observedUtc=DateTime.UtcNow.AddMilliseconds(-idle);
+    if(observedUtc<=armedAtUtc)return; // Ignore the click which initially armed monitoring.
+    var observed=observedUtc.ToLocalTime();
     if(observed>DateTime.Now.AddMinutes(1))return;
     string key=observed.ToString("yyyy-MM-dd")+":"+(observed.Hour*6+observed.Minute/10).ToString("000");
     if(slots.Add(key)){
@@ -55,7 +58,7 @@ namespace FocusGrowth {
     slots=slots.OrderBy(x=>x).Select(x=>new{date=x.Substring(0,10),slot=Int32.Parse(x.Substring(11))}).ToArray()};
   }
   public object Snapshot(){lock(gate){return View();}}
-  public object Arm(){lock(gate){armed=true;expiresUtc=DateTime.UtcNow.AddHours(12);Persist();return View();}}
+  public object Arm(){lock(gate){armed=true;armedAtUtc=DateTime.UtcNow;expiresUtc=armedAtUtc.AddHours(12);Persist();return View();}}
   public object Stop(){lock(gate){armed=false;Persist();return View();}}
   public void Dispose(){lock(gate){stopped=true;armed=false;timer.Dispose();Persist();}}
  }
