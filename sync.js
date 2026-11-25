@@ -153,6 +153,47 @@
  const tools=document.querySelector('.tools');if(tools){const button=document.createElement('button');button.id='fg-sync-status';button.className='small';button.onclick=window.fgSyncPanel;tools.append(button);}show();
  const oldOpenSync=window.openSync;window.openSync=function(){oldOpenSync();const panel=document.querySelector('#modalRoot .modal')||document.querySelector('.modal');if(panel){const b=document.createElement('button');b.textContent='Windows 私有同步';b.onclick=window.fgSyncPanel;panel.append(b);}};
  const oldSettings=window.renderSettings;window.renderSettings=function(){oldSettings();const b=document.createElement('button');b.textContent='Windows 持续同步 V0.4';b.onclick=window.fgSyncPanel;document.getElementById('settings').prepend(b);};
+
+ // Activity telemetry is strictly local. Never sends keyboard content, activity or states to GitHub.
+ let activityPolling=false,activityArmedFor=0,activityRouteUnavailable=false;
+ async function desktopActivityPoll(){
+  if(activityPolling||!session||!validWorkSession(db.workSession)||activityRouteUnavailable)return;
+  activityPolling=true;
+  try{
+   let response=await request('/v1/activity');
+   if(!response?.supported||!Array.isArray(response.slots))throw Error('unsupported_activity_response');
+   if(!response.armed||activityArmedFor!==db.workSession.startedAt){
+    response=await request('/v1/activity/arm',{});
+    activityArmedFor=db.workSession.startedAt;
+   }
+   if(!Array.isArray(response.slots))throw Error('unsupported_activity_response');
+   const sessionStart=db.workSession.startedAt,next=copy(db);let added=0;
+   for(const evidence of response.slots){
+    const d=evidence.date,slot=evidence.slot;
+    if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d)||!Number.isInteger(slot)||slot<0||slot>143)continue;
+    const h=Math.floor(slot/6),m=slot%6*10;
+    const slotStart=new Date(d+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00').getTime();
+    if(!Number.isFinite(slotStart)||slotStart+600000<=sessionStart||slotStart>Date.now()+60000)continue;
+    if(next.activity.some(a=>a.date===d&&activityStart(a)<(slot+1)*10&&activityEnd(a)>slot*10))continue;
+    next.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||null,source:'desktop-input'});
+    added++;
+   }
+   if(added){
+    assertFresh();const error=validate(next);if(error)throw Error('activity_validation_'+error);
+    db.activity=next.activity;render(); // Activity is browser-only and outside sync projection.
+   }
+  }catch(e){
+   if(e.message==='route_rejected'||e.message==='activity_unavailable'||e.message==='invalid_service_response')activityRouteUnavailable=true;
+  }finally{activityPolling=false;}
+ }
+ async function desktopActivityArm(){activityArmedFor=0;await desktopActivityPoll()}
+ async function desktopActivityStop(){
+  if(!session||activityRouteUnavailable)return;
+  try{await desktopActivityPoll();await request('/v1/activity/stop',{});activityArmedFor=0;}catch{}
+ }
+ window.FocusGrowthDesktopActivity={arm:desktopActivityArm,stop:desktopActivityStop,poll:desktopActivityPoll};
+ setInterval(()=>{if(validWorkSession(db.workSession))desktopActivityPoll()},5000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&validWorkSession(db.workSession))desktopActivityPoll()});
  window.addEventListener('online',()=>sync());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
  setInterval(()=>{if(document.visibilityState!=='visible')return;if(session)sync();else if(window.FocusGrowthDeviceSession&&!reconnecting&&Date.now()>=nextAt){restoreDevice().then(ok=>{if(ok)sync(true);}).catch(e=>{nextAt=Date.now()+30000;error=e.message;show();});}},5000);
  // Test seam exposes pure transforms only, never session or credentials.
