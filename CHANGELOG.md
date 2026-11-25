@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4 — Inherit existing work-state blocks and adjust actual placement
+- Drag a planned event onto an existing actual work block to adopt the existing block's complete time range and quadrant state, including focus/投入区, without duplicating or changing previously measured activity. Associate the task, derive its actual minutes from the local actual timeline, and mark a leaf task complete only when all associated plan occurrences are accounted for.
+- Allow users to reposition an existing actual work block by dragging its body; drag its top or bottom edge to adjust duration. Use five-minute snapping by default, Alt for one-minute precision, and Shift-drag for the existing multi-block selection. A single click opens a precise start/end-time editor.
+- Prevent accidental overlap and future-time recording. Keep existing plans unchanged, preserve associated state and task, distinguish manually adjusted input evidence, and save original activity fragments in local adjustment history so provenance remains available.
+- Update task actual-duration changes through existing scoped V0.4 sync hooks. Activity detail, original evidence, adjustment history, and quadrant state remain browser-local, not published to the public code repo or remote task sync.
+- JavaScript syntax, 20 isolated transformation checks, and source-integration checks passed; live browser drag/drop acceptance remains pending.
+
 ## V0.4 — Drag plans directly into actual timeline
 - In the side-by-side day timeline, drag a plan block onto the actual lane. Use the drop position as the actual start time, retaining the planned duration, while leaving the original plan untouched.
 - Treat this as an explicit, user-confirmed manual actual entry (not proof of keyboard or mouse activity). Use the existing neutral light gray; add minute-accurate slices within ten-minute slots without exceeding the current time.
