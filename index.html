@@ -779,7 +779,32 @@ function saveCompletedPlansActivity(){
  db.activity=next.activity;closeModal();render();toast('已补录 '+missing.length+' 个活动块；原记录保留')
 }
 function putActivity(r){db.activity=db.activity.filter(x=>!(x.date===r.date&&x.slot===r.slot));db.activity.push(r)}function saveManual(){let d=val('ad'),a=min(val('as')),b=min(val('ae'));if(!d||!Number.isFinite(a)||!Number.isFinite(b)||a>=b)return toast('请填写有效时间，跨日请分开补录');for(let i=Math.floor(a/10);i<Math.ceil(b/10);i++)putActivity({date:d,slot:i,state:val('az'),taskId:val('at')||null,source:'manual'});closeModal();render()}
-function assignActivity(d,a,b){let rec=db.activity.find(x=>x.date===d&&activityStart(x)===a);modal('调整实际工作记录',`<p>${esc(d)} · ${hm(a)}–${hm(b)}</p>`+field('关联任务',select('assignT',taskOptions(rec?.taskId,true)))+field('状态',select('assignZ',Object.keys(zones).map(k=>option(k,zones[k].name,rec?.state||'unknown')).join('')))+actions(`saveAssignment('${d}',${a},${b})`,`<button class="danger" onclick="deleteActivity('${d}',${a},${b})">删除此记录</button>`))}function saveAssignment(d,a,b){for(let x of db.activity)if(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b){x.taskId=val('assignT')||null;x.state=val('assignZ')}closeModal();render()}function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
+
+function parseActualClock(value){
+ if(typeof value!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/.test(value))return NaN;
+ return min(value)
+}
+function assignActivity(d,a,b){
+ let html='<p>'+esc(d)+' · '+hm(a)+'–'+hm(b)+'</p>';
+ html+='<div class="formrow">'+field('开始时间',input('assignStart',hm(a),'text','placeholder="HH:MM"'))+field('结束时间',input('assignEnd',hm(b),'text','placeholder="HH:MM，支持24:00"'))+'</div>';
+ const rec=db.activity.find(x=>x.date===d&&activityStart(x)===a);
+ html+=field('关联任务',select('assignT',taskOptions(rec?.taskId,true)));
+ html+=field('状态',select('assignZ',Object.keys(zones).map(k=>option(k,zones[k].name,rec?.state||'unknown')).join('')));
+ html+='<div class="notice">拖动工作块可移动位置，拖动上下边缘可修改时长。默认按5分钟吸附，按 Alt 精确到1分钟；按 Shift 拖动可框选多段。</div>';
+ const action='saveAssignment('+JSON.stringify(d)+','+a+','+b+')';
+ const remove='<button class="danger" onclick="deleteActivity('+JSON.stringify(d)+','+a+','+b+')">删除此记录</button>';
+ modal('调整实际工作记录',html+actions(action,remove))
+}
+function saveAssignment(d,a,b){
+ const start=parseActualClock(val('assignStart')),end=parseActualClock(val('assignEnd'));
+ const result=editActualIntervalDraft(db,d,a,b,start,end,new Date(),val('assignT')||null,val('assignZ'));
+ if(result.error)return toast(result.error);
+ const error=validate(result.next);if(error)return toast('未修改：'+error);
+ try{window.FocusGrowthStorageGuard?.before()}catch{return toast('数据已变化，请刷新后重试')}
+ db=result.next;closeModal();render();window.FocusGrowthNotifyTaskChange?.();
+ toast('已保存实际工作 '+hm(start)+'–'+hm(end)+'，'+fmt(result.minutes))
+}
+function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
 function browserActivity(e){
  if(!e?.isTrusted||document.visibilityState!=='visible'||(!validWorkSession(db.workSession)&&!db.taskTimer&&!db.recordBrowser))return;
  if(e.type==='pointerdown'&&e.target?.closest?.('button,[role="button"],a,.seg,.task-branch-toggle'))return; // UI controls do not count as work.
