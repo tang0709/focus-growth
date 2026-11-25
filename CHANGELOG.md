@@ -1,5 +1,12 @@
 # Changelog
 
+## V0.4 — Drag plans directly into actual timeline
+- In the side-by-side day timeline, drag a plan block onto the actual lane. Use the drop position as the actual start time, retaining the planned duration, while leaving the original plan untouched.
+- Treat this as an explicit, user-confirmed manual actual entry (not proof of keyboard or mouse activity). Use the existing neutral light gray; add minute-accurate slices within ten-minute slots without exceeding the current time.
+- Reject overlap with other or unassigned activity, prevent repeated conversion of the same plan, and preserve records already associated with the same task. Mark the task complete only after all its planned occurrences have actual coverage or explicit drop receipts, and do not finish a currently running task timer.
+- Route permitted task completion and actual-duration fields through the existing scoped sync hooks. Activity, plan-drop receipts and current work state remain browser-local.
+- JavaScript syntax and nineteen isolated execution-draft regression checks passed. Live browser acceptance remains pending.
+
 ## V0.4 — Smooth seconds on work monitor
 - Show the running work monitor's elapsed session time in HH:MM:SS with second-by-second ticks instead of a clock frozen on ten-minute work-credit increments.
 - Display valid input-backed activity time separately as ten-minute credited blocks. Unobserved periods never create activity records, even though the wall-clock monitor continues running.
