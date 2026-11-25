@@ -564,6 +564,8 @@ function putActivity(r){db.activity=db.activity.filter(x=>!(x.date===r.date&&x.s
 function assignActivity(d,a,b){let rec=db.activity.find(x=>x.date===d&&activityStart(x)===a);modal('调整实际工作记录',`<p>${esc(d)} · ${hm(a)}–${hm(b)}</p>`+field('关联任务',select('assignT',taskOptions(rec?.taskId,true)))+field('状态',select('assignZ',Object.keys(zones).map(k=>option(k,zones[k].name,rec?.state||'unknown')).join('')))+actions(`saveAssignment('${d}',${a},${b})`,`<button class="danger" onclick="deleteActivity('${d}',${a},${b})">删除此记录</button>`))}function saveAssignment(d,a,b){for(let x of db.activity)if(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b){x.taskId=val('assignT')||null;x.state=val('assignZ')}closeModal();render()}function deleteActivity(d,a,b){if(!confirm('删除这段实际活动记录？'))return;db.activity=db.activity.filter(x=>!(x.date===d&&activityStart(x)>=a&&activityEnd(x)<=b));closeModal();render()}
 function browserActivity(e){
  if(!e?.isTrusted||document.visibilityState!=='visible'||(!validWorkSession(db.workSession)&&!db.taskTimer&&!db.recordBrowser))return;
+ if(e.type==='pointerdown'&&e.target?.closest?.('button,[role="button"],a,.seg,.task-branch-toggle'))return; // UI controls do not count as work.
+ if(e.type==='keydown'&&['Tab','Shift','Control','Alt','Meta','Escape'].includes(e.key))return;
  const n=new Date(),d=dateKey(n),slot=Math.floor((n.getHours()*60+n.getMinutes())/10),key=d+':'+slot;
  lastVerifiedInputMs=n.getTime();
  if(db.activity.some(a=>a.date===d&&activityStart(a)<(slot+1)*10&&activityEnd(a)>slot*10))return;
