@@ -43,9 +43,14 @@ function startWork(withTask=false){
  const wasRunning=validWorkSession(db.workSession);
  if(!wasRunning){const now=Date.now();db.workSession={startedAt:now,cursorMs:now};db.history.push({type:'start',state:db.state,taskId:withTask?db.currentTask:null,time:new Date(now).toISOString()})}
  if(withTask&&db.currentTask&&task(db.currentTask)&&!task(db.currentTask).done)beginTaskTimer(db.currentTask);
- if(!db.pin)collapsed=true;render();toast(wasRunning?'工作监测已开启，等待操作活动':'已开启工作监测：只有检测到键鼠活动的10分钟块才计入有效工作')
+ if(!db.pin)collapsed=true;render();window.FocusGrowthDesktopActivity?.arm?.();toast(wasRunning?'工作监测已开启，等待操作活动':'已开启工作监测：只有检测到键鼠活动的10分钟块才计入有效工作')
 }
-function stopWorkSession(){
+let stoppingWorkSession=false;
+async function stopWorkSession(){
+ if(stoppingWorkSession||!validWorkSession(db.workSession))return;
+ stoppingWorkSession=true;
+ try{await window.FocusGrowthDesktopActivity?.stop?.()}catch{}
+ stoppingWorkSession=false;
  if(!validWorkSession(db.workSession))return;
  let draft;const now=Date.now(),start=db.workSession.startedAt;
  try{window.FocusGrowthStorageGuard?.before();draft=workSessionDraft(db,now,true)}catch(e){if(e.message!=='work_session_gap_too_long')return toast('页面数据已变化，请刷新后再结束');if(!confirm('未保存的计时跨度超过31天。是否结束计时，仅保留已有活动块？'))return;draft={next:{...clone(db),workSession:null},added:0}}
