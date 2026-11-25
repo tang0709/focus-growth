@@ -793,23 +793,52 @@ function assignPlanToExistingActualDraft(base,planId,date,start,end,clock){
  const plan=base.plans.find(p=>p.id===planId),task=plan&&base.tasks.find(t=>t.id===plan.taskId);
  if(!plan||!task||plan.date!==date||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>1440||start>=end)return {error:'计划或目标记录无效'};
  if(date>dateKey(clock)||date===dateKey(clock)&&end>clock.getHours()*60+clock.getMinutes())return {error:'未来时段不能标记完成'};
- if(base.history.some(h=>h.type==='plan-drag-actual'&&h.planId===planId))return {error:'该计划已登记，请调整现有记录'};
- const rows=base.activity.filter(a=>a.date===date&&activityStart(a)<end&&activityEnd(a)>start).sort((a,b)=>activityStart(a)-activityStart(b));
- if(!rows.length||rows.some(a=>activityStart(a)<start||activityEnd(a)>end))return {error:'目标时段变化'};
- if(rows.some(a=>a.taskId&&a.taskId!==task.id))return {error:'目标已关联其他任务，禁止覆盖'};
- const state=rows[0].state||'unknown';
- if(rows.some(a=>(a.state||'unknown')!==state))return {error:'状态不同，请选择单一状态块'};
- let pos=start;for(const a of rows){if(activityStart(a)!==pos)return {error:'目标工作块不连续'};pos=activityEnd(a)}
- if(pos!==end)return {error:'目标工作块不完整'};
- const next=clone(base);let assigned=0;
- for(const a of next.activity)if(a.date===date&&activityStart(a)>=start&&activityEnd(a)<=end&&!a.taskId){a.taskId=task.id;a.assignedFromPlanId=planId;assigned+=activityMinutes(a)}
- next.history.push({type:'plan-drag-actual',mode:'existing-activity',planId,taskId:task.id,date,start,duration:end-start,state,assignedMinutes:assigned,time:clock.toISOString()});
- const t=next.tasks.find(t=>t.id===task.id),plans=next.plans.filter(p=>p.taskId===task.id);
- const allDone=plans.length>0&&plans.every(p=>next.history.some(h=>h.type==='plan-drag-actual'&&h.planId===p.id)||activityCoversPlan(next,p));
+ const tag=a=>a.assignedFromPlanId===planId||a.planId===planId;
+ const prior=base.history.filter(h=>h.type==='plan-drag-actual'&&h.planId===planId).at(-1)||null;
+ const previous=base.activity.filter(a=>tag(a)&&a.taskId===task.id);
+ if(prior&&!previous.length)return {error:'原计划有历史执行记录，但当前已无法定位其任务关联。为防重复，请先在右侧编辑原记录'};
+ const targetRows=base.activity.filter(a=>a.date===date&&activityStart(a)<end&&activityEnd(a)>start).sort((a,b)=>activityStart(a)-activityStart(b));
+ if(!targetRows.length||targetRows.some(a=>activityStart(a)<start||activityEnd(a)>end))return {error:'目标时段已变化，请刷新后重试'};
+ if(targetRows.some(a=>a.taskId&&a.taskId!==task.id))return {error:'目标已经关联其他任务，不能静默覆盖'};
+ if(targetRows.some(a=>tag(a)&&a.taskId===task.id)&&previous.every(a=>a.date===date&&activityStart(a)>=start&&activityEnd(a)<=end))return {error:'该计划已经关联到这一工作块，无需重复拖放'};
+ if(targetRows.some(a=>a.taskId===task.id&&(a.assignedFromPlanId||a.planId)&&!tag(a)))return {error:'目标工作块已关联另一项计划，不能覆盖'};
+ const state=targetRows[0].state||'unknown';
+ if(!Object.hasOwn(zones,state)||targetRows.some(a=>(a.state||'unknown')!==state))return {error:'目标时段包含不同工作状态，请先拆分'};
+ let cursor=start;
+ for(const a of targetRows){if(activityStart(a)!==cursor)return {error:'目标时段有未记录的空隙'};cursor=activityEnd(a)}
+ if(cursor!==end)return {error:'目标时段并非完整的工作块'};
+ const next=clone(base);
+ const detached=previous.map(a=>({date:a.date,start:activityStart(a),end:activityEnd(a),source:a.source,state:a.state||'unknown'}));
+ for(const a of next.activity){
+  if(tag(a)&&a.taskId===task.id){
+   a.taskId=null;
+   delete a.assignedFromPlanId;
+   delete a.planId;
+   a.previousPlanId=planId;
+  }
+ }
+ let assigned=0;
+ for(const a of next.activity){
+  if(a.date!==date||activityStart(a)<start||activityEnd(a)>end)continue;
+  if(a.taskId&&a.taskId!==task.id)return {error:'目标时段任务在编辑期间发生变化'};
+  if(!a.taskId){a.taskId=task.id;assigned+=activityMinutes(a)}
+  a.assignedFromPlanId=planId;
+  delete a.planId;
+ }
+ next.history.push({
+  type:'plan-drag-actual',mode:prior?'existing-activity-reassigned':'existing-activity',
+  planId,taskId:task.id,date,start,duration:end-start,state,assignedMinutes:assigned,
+  replaced:detached,time:clock.toISOString()
+ });
+ const updated=next.tasks.find(t=>t.id===task.id),related=next.plans.filter(p=>p.taskId===task.id);
+ const allDone=related.length>0&&related.every(p=>next.history.some(h=>h.type==='plan-drag-actual'&&h.planId===p.id)||activityCoversPlan(next,p));
  let completed=false;
- if(allDone&&!next.tasks.some(c=>c.parentId===t.id&&!c.done)&&next.taskTimer?.taskId!==t.id&&!t.done){t.done=true;t.completedAt=clock.toISOString();completed=true;if(next.currentTask===t.id)next.currentTask=null}
- const total=sumActivity(next.activity.filter(a=>a.taskId===t.id));t.actual=total;
- return {next,addedMinutes:0,assignedMinutes:assigned,actualMinutes:end-start,completed,state};
+ if(allDone&&!next.tasks.some(c=>c.parentId===task.id&&!c.done)&&next.taskTimer?.taskId!==task.id&&!updated.done){
+  updated.done=true;updated.completedAt=clock.toISOString();completed=true;
+  if(next.currentTask===task.id)next.currentTask=null
+ }
+ updated.actual=sumActivity(next.activity.filter(a=>a.taskId===task.id));
+ return {next,addedMinutes:0,assignedMinutes:assigned,actualMinutes:end-start,completed,state,reassigned:!!prior,detachedMinutes:sumActivity(previous)};
 }
 
 function editActualIntervalDraft(base,date,start,end,nextStart,nextEnd,clock,changeTaskId,changeState){
