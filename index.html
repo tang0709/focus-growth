@@ -625,6 +625,29 @@ function dropPlanAsActual(e,lane){
  db=result.next;mode='compare';render();
  toast('已登记 '+hm(start)+'–'+hm(start+p.duration)+'，新增实际工时 '+fmt(result.addedMinutes)+(result.completed?'，任务已完成':'，任务完成状态保留')+(result.alreadyRecordedMinutes?'，已有同任务记录 '+fmt(result.alreadyRecordedMinutes)+' 未重复计入':''))
 }
+
+function assignPlanToExistingActualDraft(base,planId,date,start,end,clock){
+ const plan=base.plans.find(p=>p.id===planId),task=plan&&base.tasks.find(t=>t.id===plan.taskId);
+ if(!plan||!task||plan.date!==date||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>1440||start>=end)return {error:'计划或目标记录无效'};
+ if(date>dateKey(clock)||date===dateKey(clock)&&end>clock.getHours()*60+clock.getMinutes())return {error:'未来时段不能标记完成'};
+ if(base.history.some(h=>h.type==='plan-drag-actual'&&h.planId===planId))return {error:'该计划已登记，请调整现有记录'};
+ const rows=base.activity.filter(a=>a.date===date&&activityStart(a)<end&&activityEnd(a)>start).sort((a,b)=>activityStart(a)-activityStart(b));
+ if(!rows.length||rows.some(a=>activityStart(a)<start||activityEnd(a)>end))return {error:'目标时段变化'};
+ if(rows.some(a=>a.taskId&&a.taskId!==task.id))return {error:'目标已关联其他任务，禁止覆盖'};
+ const state=rows[0].state||'unknown';
+ if(rows.some(a=>(a.state||'unknown')!==state))return {error:'状态不同，请选择单一状态块'};
+ let pos=start;for(const a of rows){if(activityStart(a)!==pos)return {error:'目标工作块不连续'};pos=activityEnd(a)}
+ if(pos!==end)return {error:'目标工作块不完整'};
+ const next=clone(base);let assigned=0;
+ for(const a of next.activity)if(a.date===date&&activityStart(a)>=start&&activityEnd(a)<=end&&!a.taskId){a.taskId=task.id;a.assignedFromPlanId=planId;assigned+=activityMinutes(a)}
+ next.history.push({type:'plan-drag-actual',mode:'existing-activity',planId,taskId:task.id,date,start,duration:end-start,state,assignedMinutes:assigned,time:clock.toISOString()});
+ const t=next.tasks.find(t=>t.id===task.id),plans=next.plans.filter(p=>p.taskId===task.id);
+ const allDone=plans.length>0&&plans.every(p=>next.history.some(h=>h.type==='plan-drag-actual'&&h.planId===p.id)||activityCoversPlan(next,p));
+ let completed=false;
+ if(allDone&&!next.tasks.some(c=>c.parentId===t.id&&!c.done)&&next.taskTimer?.taskId!==t.id&&!t.done){t.done=true;t.completedAt=clock.toISOString();completed=true;if(next.currentTask===t.id)next.currentTask=null}
+ const total=sumActivity(next.activity.filter(a=>a.taskId===t.id));if(total>0)t.actual=Math.max(Number.isFinite(t.actual)?t.actual:0,total);
+ return {next,addedMinutes:0,assignedMinutes:assigned,actualMinutes:end-start,completed,state};
+}
 function actualPlanDropDraft(base,planId,date,start,now){
  const p=base.plans.find(x=>x.id===planId),t=p&&base.tasks.find(x=>x.id===p.taskId);
  if(!p||!t||p.date!==date||!Number.isInteger(start)||start<0||start+p.duration>1440||!Number.isFinite(now?.getTime?.()))return {error:'排程或日期无效'};
