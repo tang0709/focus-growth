@@ -81,6 +81,7 @@ function undoRestore(entry,to){
   toast('正在计时或监测。请先暂停或结束，再撤销涉及任务和实际工时的操作');return false
  }
  const problem=validate(next);if(problem){toast('撤销被阻止：'+problem);return false}
+ const policy=window.FocusGrowthUndoCheck?.(db,next);if(policy){toast(policy);return false}
  try{window.FocusGrowthStorageGuard?.before()}catch{toast('另一个标签页已修改数据，请刷新后再操作');return false}
  const oldDb=db,oldArchive=[...archivedTaskIds],restoreArchive=entry.keys.includes('archiveIds');
  undoApplying=true;
@@ -103,12 +104,14 @@ function undoRestore(entry,to){
  return true
 }
 function undoLastAction(){
+ undoGesture=null;
  if(!undoStack.length)return toast('没有可撤销的编辑操作');
  const entry=undoStack[undoStack.length-1];
  if(undoRestore(entry,'before')){undoStack.pop();redoStack.push(entry);return true}
  return false
 }
 function redoLastAction(){
+ undoGesture=null;
  if(!redoStack.length)return toast('没有可重做的操作');
  const entry=redoStack[redoStack.length-1];
  if(undoRestore(entry,'after')){redoStack.pop();undoStack.push(entry);return true}
