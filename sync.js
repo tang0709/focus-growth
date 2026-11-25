@@ -107,8 +107,9 @@
   finally{busy=false;show();}
  }
  function dirty(){if(applying)return;try{assertFresh();queue();status=enabled?'同步中':session?'已暂停 · 本地更改已暂存':'未连接 · 本地更改已暂存';show();if(enabled){clearTimeout(timer);timer=setTimeout(()=>sync(),1500);}}catch(e){enabled=false;error=e.message;status='本地持久化失败或多标签冲突';show();}}
+ window.FocusGrowthNotifyTaskChange=dirty;
  function track(fn){return function(...args){const before=stable(project());const result=fn.apply(this,args);if(before!==stable(project()))dirty();return result;};}
- for(const name of ['saveTask','completeTask','confirmPlanExecution','beginTaskTimer','pauseTaskTimer','stopTaskTimer','saveRecoveredTimer','deleteTask','savePlan','deletePlan','dropPlanAsActual','dropTask','saveProject','importText','resetData']){
+ for(const name of ['saveTask','saveAssignment','completeTask','confirmPlanExecution','beginTaskTimer','pauseTaskTimer','stopTaskTimer','saveRecoveredTimer','deleteTask','savePlan','deletePlan','dropPlanAsActual','dropTask','saveProject','importText','resetData']){
   // These legacy functions are explicitly global declarations in the single-file UI.
   if(typeof window[name]==='function')window[name]=track(window[name]);
  }
