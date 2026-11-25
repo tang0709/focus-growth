@@ -157,17 +157,18 @@
  // Activity telemetry is strictly local. Never sends keyboard content, activity or states to GitHub.
  let activityPolling=false,activityArmedFor=0,activityRouteUnavailable=false;
  async function desktopActivityPoll(){
-  if(activityPolling||!session||!validWorkSession(db.workSession)||activityRouteUnavailable)return;
+  if(activityPolling||!session||(!validWorkSession(db.workSession)&&!db.taskTimer)||activityRouteUnavailable)return;
   activityPolling=true;
   try{
    let response=await request('/v1/activity');
    if(!response?.supported||!Array.isArray(response.slots))throw Error('unsupported_activity_response');
-   if(!response.armed||activityArmedFor!==db.workSession.startedAt){
+   const trackingStart=validWorkSession(db.workSession)?db.workSession.startedAt:db.taskTimer.startedAt;
+   if(!response.armed||activityArmedFor!==trackingStart){
     response=await request('/v1/activity/arm',{});
-    activityArmedFor=db.workSession.startedAt;
+    activityArmedFor=trackingStart;
    }
    if(!Array.isArray(response.slots))throw Error('unsupported_activity_response');
-   const sessionStart=db.workSession.startedAt,next=copy(db);let added=0;
+   const sessionStart=trackingStart,next=copy(db);let added=0;
    for(const evidence of response.slots){
     const d=evidence.date,slot=evidence.slot;
     if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d)||!Number.isInteger(slot)||slot<0||slot>143)continue;
@@ -175,7 +176,7 @@
     const slotStart=new Date(d+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00').getTime();
     if(!Number.isFinite(slotStart)||slotStart+600000<=sessionStart||slotStart>Date.now()+60000)continue;
     if(next.activity.some(a=>a.date===d&&activityStart(a)<(slot+1)*10&&activityEnd(a)>slot*10))continue;
-    next.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||null,source:'desktop-input',sessionStartedAt:sessionStart});
+    next.activity.push({date:d,slot,state:db.state||'unknown',taskId:db.taskTimer?.taskId||null,source:'desktop-input',...(validWorkSession(db.workSession)?{sessionStartedAt:db.workSession.startedAt}:{})});
     added++;
    }
    if(added){
@@ -192,8 +193,8 @@
   try{await desktopActivityPoll();await request('/v1/activity/stop',{});activityArmedFor=0;}catch{}
  }
  window.FocusGrowthDesktopActivity={arm:desktopActivityArm,stop:desktopActivityStop,poll:desktopActivityPoll};
- setInterval(()=>{if(validWorkSession(db.workSession))desktopActivityPoll()},5000);
- document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&validWorkSession(db.workSession))desktopActivityPoll()});
+ setInterval(()=>{if(validWorkSession(db.workSession)||db.taskTimer)desktopActivityPoll()},5000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(validWorkSession(db.workSession)||db.taskTimer))desktopActivityPoll()});
  window.addEventListener('online',()=>sync());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
  setInterval(()=>{if(document.visibilityState!=='visible')return;if(session)sync();else if(window.FocusGrowthDeviceSession&&!reconnecting&&Date.now()>=nextAt){restoreDevice().then(ok=>{if(ok)sync(true);}).catch(e=>{nextAt=Date.now()+30000;error=e.message;show();});}},5000);
  // Test seam exposes pure transforms only, never session or credentials.
