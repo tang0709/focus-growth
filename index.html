@@ -747,12 +747,26 @@ function actualGroupAt(base,date,minute){
  while(right+1<records.length&&activityEnd(records[right])===activityStart(records[right+1])&&key(records[right+1])===same)right++;
  return {start:activityStart(records[left]),end:activityEnd(records[right]),taskId:item.taskId||null,state:item.state||'unknown'};
 }
+function actualGroupNear(base,date,minute,tolerance=6){
+ const exact=actualGroupAt(base,date,minute);if(exact)return exact;
+ let best=null,dist=tolerance+1;
+ for(let delta=1;delta<=tolerance;delta++){
+  for(const probe of [minute-delta,minute+delta]){
+   const candidate=actualGroupAt(base,date,probe);
+   if(!candidate||candidate.taskId)continue;
+   const distance=minute<candidate.start?candidate.start-minute:Math.max(0,minute-candidate.end+1);
+   if(distance<dist){best=candidate;dist=distance}
+  }
+  if(best)break;
+ }
+ return best
+}
 function planDropMinute(e,lane){
  return Math.floor((e.clientY-lane.getBoundingClientRect().top)/SCALE)
 }
 function markActualDropHover(lane,minute){
  for(const el of lane.querySelectorAll('.actual-drop-hover'))el.classList.remove('actual-drop-hover');
- const group=actualGroupAt(db,day,minute);
+ const group=actualGroupNear(db,day,minute);
  if(group){
   const el=[...lane.querySelectorAll('[data-actual-start][data-actual-end]')].find(x=>Number(x.dataset.actualStart)===group.start&&Number(x.dataset.actualEnd)===group.end);
   el?.classList.add('actual-drop-hover')
@@ -762,7 +776,7 @@ function markActualDropHover(lane,minute){
 function commitPlanIntoActual(id,date,minute,offset=0,clock=new Date()){
  const p=db.plans.find(x=>x.id===id);
  if(!p||p.date!==date)return {error:'原计划已变化，请刷新后重试'};
- const target=actualGroupAt(db,date,minute);
+ const target=actualGroupNear(db,date,minute);
  const start=target?target.start:Math.max(0,Math.min(1440-p.duration,Math.round((minute-offset)/10)*10));
  const result=target?assignPlanToExistingActualDraft(db,id,date,target.start,target.end,clock):actualPlanDropDraft(db,id,date,start,clock);
  if(result.error)return result;
